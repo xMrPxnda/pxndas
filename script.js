@@ -394,48 +394,123 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // Product detail modal
-    const detailModal = document.getElementById('productDetailModal');
-    const closeDetailBtn = document.getElementById('closeProductDetail');
-    const openDetailModal = (acc) => {
-        if (!detailModal || !acc) return;
-        const hasImage = acc.image && acc.image.startsWith('data:');
-        document.getElementById('detailImage').innerHTML = hasImage ? '' : Security.sanitize(acc.icon || '🔑');
-        document.getElementById('detailImage').style.backgroundImage = hasImage ? `url('${Security.sanitize(acc.image)}')` : '';
-        document.getElementById('detailImage').style.backgroundSize = 'cover';
-        document.getElementById('detailImage').style.backgroundPosition = 'center';
-        document.getElementById('detailCategory').textContent = (acc.category || 'other').toUpperCase();
-        document.getElementById('detailTitle').textContent = acc.title;
-        document.getElementById('detailDesc').textContent = acc.desc;
-        document.getElementById('detailPrice').textContent = `$${acc.price}`;
-        const stockEl = document.getElementById('detailStock');
-        const stock = parseInt(acc.stock) || 0;
-        stockEl.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
-        stockEl.className = 'detail-stock' + (stock > 0 ? '' : ' out');
-        const addBtn = document.getElementById('detailAddToCart');
-        addBtn.onclick = null;
-        addBtn.textContent = 'Add to Cart';
-        addBtn.style.background = '';
-        addBtn.style.borderColor = '';
-        addBtn.style.color = '';
-        addBtn.disabled = false;
-        addBtn.addEventListener('click', function handler() {
-            cart.push({ name: acc.title, price: parseFloat(acc.price) });
-            saveCart();
-            animateCount();
-            addBtn.textContent = '✓ Added to Cart';
-            addBtn.style.background = 'var(--secondary)';
-            addBtn.style.borderColor = 'var(--secondary)';
-            addBtn.style.color = 'white';
-            addBtn.disabled = true;
-            setTimeout(() => { detailModal.style.display = 'none'; }, 600);
-            addBtn.removeEventListener('click', handler);
-        });
-        detailModal.style.display = 'block';
+    // Product detail overlay
+    const pdOverlay = document.getElementById('productDetailOverlay');
+    const pdBackBtn = document.getElementById('pdBackBtn');
+    const pdCloseBtn = document.getElementById('pdCloseBtn');
+    let pdQty = 1;
+    let currentPdAccount = null;
+
+    const closePd = () => {
+        pdOverlay.classList.remove('open');
+        pdOverlay.style.display = 'none';
+        document.body.style.overflow = '';
     };
-    if (closeDetailBtn) {
-        closeDetailBtn.addEventListener('click', () => { detailModal.style.display = 'none'; });
-    }
+
+    const openDetailModal = (acc) => {
+        if (!pdOverlay || !acc) return;
+        currentPdAccount = acc;
+        pdQty = 1;
+
+        const hasImage = acc.image && acc.image.startsWith('data:');
+        const heroBg = document.getElementById('pdHeroBg');
+        if (hasImage) {
+            heroBg.style.backgroundImage = `url('${Security.sanitize(acc.image)}')`;
+            heroBg.classList.add('has-image');
+            heroBg.innerHTML = '';
+        } else {
+            heroBg.style.backgroundImage = '';
+            heroBg.classList.remove('has-image');
+            heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
+        }
+
+        document.getElementById('pdCategory').textContent = (acc.category || 'other').toUpperCase();
+        const stock = parseInt(acc.stock) || 0;
+        const stockEl = document.getElementById('pdStock');
+        stockEl.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
+        stockEl.className = 'pd-stock ' + (stock > 0 ? 'in' : 'out');
+
+        const titleEl = document.getElementById('pdTitle');
+        titleEl.textContent = acc.title;
+        titleEl.setAttribute('data-text', acc.title);
+
+        document.getElementById('pdDesc').textContent = acc.desc || 'No description provided.';
+
+        // Build features from description keywords + defaults
+        const featuresEl = document.getElementById('pdFeatures');
+        const desc = (acc.desc || '').toLowerCase();
+        const extras = [];
+        if (desc.includes('money') || desc.includes('cash') || desc.includes('$')) extras.push('Modded in-game currency');
+        if (desc.includes('rank') || desc.includes('rp') || desc.includes('xp')) extras.push('Rank & XP unlocked');
+        if (desc.includes('property') || desc.includes('bunker') || desc.includes('business')) extras.push('All properties & businesses');
+        if (desc.includes('vehicle') || desc.includes('car') || desc.includes('garage')) extras.push('Rare vehicles & garages');
+        if (desc.includes('recovery') || desc.includes('email') || desc.includes('access')) extras.push('Full email & account access');
+        extras.push('Secure delivery & setup');
+        extras.push('Lifetime replacement warranty');
+        const uniqueExtras = [...new Set(extras)].slice(0, 8);
+        featuresEl.innerHTML = uniqueExtras.map(f =>
+            `<li><span class="pf-icon">✓</span> ${Security.sanitize(f)}</li>`
+        ).join('');
+
+        const price = parseFloat(acc.price) || 0;
+        document.getElementById('pdPriceLg').textContent = `$${price.toFixed(2)}`;
+        document.getElementById('pdCurrentPrice').textContent = `$${price.toFixed(2)}`;
+
+        document.getElementById('pdQtyVal').textContent = '1';
+        document.getElementById('pdQtyMinus').disabled = true;
+
+        const addBtn = document.getElementById('pdAddBtn');
+        addBtn.textContent = 'Add to Cart';
+        addBtn.className = 'pd-add-btn';
+        addBtn.disabled = false;
+
+        pdOverlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => {
+            pdOverlay.classList.add('open');
+            pdOverlay.scrollTop = 0;
+        });
+    };
+
+    // Qty controls
+    document.getElementById('pdQtyMinus').addEventListener('click', () => {
+        if (pdQty > 1) {
+            pdQty--;
+            document.getElementById('pdQtyVal').textContent = pdQty;
+            document.getElementById('pdQtyMinus').disabled = pdQty <= 1;
+            if (currentPdAccount) {
+                const price = parseFloat(currentPdAccount.price) || 0;
+                document.getElementById('pdCurrentPrice').textContent = `$${(price * pdQty).toFixed(2)}`;
+            }
+        }
+    });
+    document.getElementById('pdQtyPlus').addEventListener('click', () => {
+        if (pdQty < 99) {
+            pdQty++;
+            document.getElementById('pdQtyVal').textContent = pdQty;
+            document.getElementById('pdQtyMinus').disabled = false;
+            if (currentPdAccount) {
+                const price = parseFloat(currentPdAccount.price) || 0;
+                document.getElementById('pdCurrentPrice').textContent = `$${(price * pdQty).toFixed(2)}`;
+            }
+        }
+    });
+
+    document.getElementById('pdAddBtn').addEventListener('click', function() {
+        if (!currentPdAccount) return;
+        const price = parseFloat(currentPdAccount.price) || 0;
+        for (let i = 0; i < pdQty; i++) {
+            cart.push({ name: currentPdAccount.title, price });
+        }
+        saveCart();
+        animateCount();
+        this.textContent = `✓ Added ${pdQty} item${pdQty > 1 ? 's' : ''}`;
+        this.className = 'pd-add-btn added';
+        setTimeout(closePd, 800);
+    });
+
+    if (pdBackBtn) pdBackBtn.addEventListener('click', closePd);
+    if (pdCloseBtn) pdCloseBtn.addEventListener('click', closePd);
 
     loadStoreAccounts();
 

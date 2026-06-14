@@ -195,21 +195,57 @@
         </div>
     </div>
 
-    <!-- Product Detail Modal -->
-    <div id="productDetailModal" class="modal">
-        <div class="modal-content detail-modal-content">
-            <span class="close-modal" id="closeProductDetail">&times;</span>
-            <div class="detail-layout">
-                <div class="detail-image" id="detailImage">🔑</div>
-                <div class="detail-info">
-                    <span class="detail-category" id="detailCategory">MODDED</span>
-                    <h2 id="detailTitle">Account Title</h2>
-                    <div class="detail-meta">
-                        <span class="detail-stock" id="detailStock">In Stock</span>
-                        <span class="detail-price" id="detailPrice">$0.00</span>
+    <!-- Product Detail Overlay -->
+    <div id="productDetailOverlay">
+        <div class="pd-header">
+            <button id="pdBackBtn">← Back to Store</button>
+            <button id="pdCloseBtn">&times;</button>
+        </div>
+        <div class="pd-scroll">
+            <div class="pd-hero" id="pdHero">
+                <div class="pd-hero-bg" id="pdHeroBg"></div>
+                <div class="pd-hero-overlay"></div>
+                <div class="pd-hero-content">
+                    <div class="pd-badges">
+                        <span class="pd-category" id="pdCategory">MODDED</span>
+                        <span class="pd-stock" id="pdStock">In Stock</span>
                     </div>
-                    <p id="detailDesc">Account description goes here.</p>
-                    <button class="btn btn-primary detail-add-btn" id="detailAddToCart">Add to Cart</button>
+                    <h1 class="pd-title" id="pdTitle" data-text="Account Title">Account Title</h1>
+                    <div class="pd-price-lg" id="pdPriceLg">$0.00</div>
+                </div>
+            </div>
+            <div class="pd-body">
+                <div class="pd-left">
+                    <div class="pd-section">
+                        <h3 class="pd-section-title">Description</h3>
+                        <p class="pd-desc" id="pdDesc">Account description goes here.</p>
+                    </div>
+                    <div class="pd-section">
+                        <h3 class="pd-section-title">What's Included</h3>
+                        <ul class="pd-features" id="pdFeatures">
+                            <li><span class="pf-icon">✓</span> Modded in-game currency</li>
+                            <li><span class="pf-icon">✓</span> Rank & XP unlocked</li>
+                            <li><span class="pf-icon">✓</span> All properties & vehicles</li>
+                            <li><span class="pf-icon">✓</span> Secure email access</li>
+                            <li><span class="pf-icon">✓</span> Lifetime replacement warranty</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="pd-right">
+                    <div class="pd-purchase-card">
+                        <div class="pd-current-price" id="pdCurrentPrice">$0.00</div>
+                        <div class="pd-qty-row">
+                            <button class="pd-qty-btn" id="pdQtyMinus">−</button>
+                            <span class="pd-qty-val" id="pdQtyVal">1</span>
+                            <button class="pd-qty-btn" id="pdQtyPlus">+</button>
+                        </div>
+                        <button class="pd-add-btn" id="pdAddBtn">Add to Cart</button>
+                        <div class="pd-trust">
+                            <div class="pd-trust-item"><span>🔒</span> Secure Checkout</div>
+                            <div class="pd-trust-item"><span>⚡</span> Instant Delivery</div>
+                            <div class="pd-trust-item"><span>♾️</span> Lifetime Warranty</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
