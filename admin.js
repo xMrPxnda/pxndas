@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- Live Chat ----
     let liveChatSelectedUser = null;
     let liveChatLastCount = {};
+    let liveChatNotifications = {};
 
     const loadLiveChatSidebar = () => {
         const list = document.getElementById('live-chat-user-list');
@@ -244,21 +245,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const sorted = Object.entries(users).sort((a, b) => b[1].lastTime - a[1].lastTime);
 
+        const totalUnread = Object.values(liveChatNotifications).reduce((s, v) => s + v, 0);
+        const badge = document.getElementById('live-chat-tab-badge');
+        if (badge) {
+            badge.textContent = totalUnread;
+            badge.classList.toggle('show', totalUnread > 0);
+        }
+
         list.innerHTML = sorted.length
             ? sorted.map(([user, data]) => {
                 const isActive = user === liveChatSelectedUser;
                 const time = new Date(data.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return `<div class="live-chat-user-item" data-user="${Security.sanitize(user)}" style="padding:0.7rem 0.8rem;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.2s;${isActive ? 'background:rgba(0,255,255,0.06);border-left:3px solid var(--neon-blue);' : ''}">
-                    <div style="font-weight:700;font-size:0.85rem;color:${isActive ? 'var(--neon-blue)' : '#ddd'};">${Security.sanitize(user)}</div>
-                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${Security.sanitize(data.lastText)}</div>
-                    <div style="font-size:0.6rem;color:var(--text-muted);margin-top:2px;">${time}</div>
+                const unread = liveChatNotifications[user] || 0;
+                return `<div class="live-chat-user-item${isActive ? ' active' : ''}" data-user="${Security.sanitize(user)}">
+                    ${unread > 0 ? `<span class="live-chat-user-badge">${unread > 9 ? '9+' : unread}</span>` : ''}
+                    <div class="live-chat-user-name">${Security.sanitize(user)}</div>
+                    <div class="live-chat-user-preview">${Security.sanitize(data.lastText)}</div>
+                    <div class="live-chat-user-time">${time}</div>
                 </div>`;
             }).join('')
-            : '<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:0.8rem;">No conversations yet.</div>';
+            : '<div class="live-chat-empty">No conversations yet.</div>';
 
         list.querySelectorAll('.live-chat-user-item').forEach(el => {
             el.addEventListener('click', () => {
                 liveChatSelectedUser = el.dataset.user;
+                liveChatNotifications[liveChatSelectedUser] = 0;
                 loadLiveChatMessages();
                 loadLiveChatSidebar();
             });
@@ -270,15 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const header = document.getElementById('live-chat-main-header');
         const inputArea = document.getElementById('live-chat-main-input');
         const adminInput = document.getElementById('live-chat-admin-input');
+        const typingEl = document.getElementById('live-chat-typing-indicator');
         if (!container) return;
         if (!liveChatSelectedUser) {
             if (header) header.textContent = 'Select a conversation';
-            if (inputArea) inputArea.style.display = 'none';
-            if (container) container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">Click a user on the left to view their chat.</div>';
+            if (inputArea) inputArea.classList.remove('visible');
+            if (container) container.innerHTML = '<div class="live-chat-empty">Click a user on the left to view their chat.</div>';
+            if (typingEl) typingEl.style.display = 'none';
             return;
         }
         if (header) header.textContent = `Chatting with: @${Security.sanitize(liveChatSelectedUser)}`;
-        if (inputArea) inputArea.style.display = 'flex';
+        if (inputArea) inputArea.classList.add('visible');
 
         const msgs = Security.secureStore.get('live_chat_messages') || [];
         const userMsgs = msgs.filter(m => m.user === liveChatSelectedUser);
@@ -287,12 +300,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isAdmin = m.from === 'admin';
                 const label = isAdmin ? 'You' : liveChatSelectedUser;
                 const time = new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return `<div style="display:flex;flex-direction:column;align-items:${isAdmin ? 'flex-end' : 'flex-start'};animation:msgSlide 0.2s ease-out;">
-                    <div style="font-size:0.55rem;color:var(--text-muted);margin-bottom:2px;">${Security.sanitize(label)} · ${time}</div>
-                    <div style="background:${isAdmin ? 'rgba(0,255,255,0.08)' : 'rgba(188,19,254,0.08)'};border:1px solid ${isAdmin ? 'rgba(0,255,255,0.15)' : 'rgba(188,19,254,0.15)'};border-radius:${isAdmin ? '12px 12px 4px 12px' : '12px 12px 12px 4px'};padding:0.6rem 1rem;max-width:75%;color:#d0d8e0;font-size:0.82rem;line-height:1.5;">${Security.sanitize(m.text)}</div>
+                return `<div class="live-chat-msg-row ${isAdmin ? 'admin' : 'user'}">
+                    <div class="live-chat-msg-label">${Security.sanitize(label)} · ${time}</div>
+                    <div class="live-chat-msg-bubble">${Security.sanitize(m.text)}</div>
                 </div>`;
             }).join('')
-            : '<div style="text-align:center;color:var(--text-muted);font-size:0.8rem;padding:1rem;">No messages yet.</div>';
+            : '<div class="live-chat-no-msgs">No messages yet.</div>';
+
+        // Check typing indicator
+        if (typingEl) {
+            const typing = Security.secureStore.get('live_chat_typing') || {};
+            const lastTyping = typing[liveChatSelectedUser];
+            if (lastTyping && Date.now() - lastTyping < 3000) {
+                typingEl.classList.add('show');
+                typingEl.textContent = `${Security.sanitize(liveChatSelectedUser)} is typing...`;
+            } else {
+                typingEl.classList.remove('show');
+            }
+        }
+
         container.scrollTop = container.scrollHeight;
         if (adminInput) adminInput.focus();
     };
@@ -319,15 +345,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const startLiveChatPoll = () => {
         setInterval(() => {
             const tab = document.querySelector('#live-chat.active');
-            if (!tab) return;
             const msgs = Security.secureStore.get('live_chat_messages') || [];
             const counts = {};
-            msgs.forEach(m => { counts[m.user] = (counts[m.user] || 0) + 1; });
+
+            msgs.forEach(m => {
+                counts[m.user] = (counts[m.user] || 0) + 1;
+                if (m.from === 'user') {
+                    // Only increment notification if admin hasn't selected this user
+                    if (m.user !== liveChatSelectedUser || !tab) {
+                        const key = m.user + '_' + m.time;
+                        if (!liveChatNotifications['_seen_' + key]) {
+                            liveChatNotifications[m.user] = (liveChatNotifications[m.user] || 0) + 1;
+                            liveChatNotifications['_seen_' + key] = true;
+                        }
+                    }
+                }
+            });
+
+            if (!tab) {
+                // Still update badge even when tab is hidden
+                const totalUnread = Object.keys(liveChatNotifications)
+                    .filter(k => !k.startsWith('_seen_'))
+                    .reduce((s, u) => s + (liveChatNotifications[u] || 0), 0);
+                const badge = document.getElementById('live-chat-tab-badge');
+                if (badge) {
+                    badge.textContent = totalUnread;
+                    badge.classList.toggle('show', totalUnread > 0);
+                }
+                return;
+            }
+
             let changed = Object.keys(counts).length !== Object.keys(liveChatLastCount).length;
             if (!changed) {
                 for (const [u, c] of Object.entries(counts)) { if (liveChatLastCount[u] !== c) { changed = true; break; } }
             }
-            if (changed) { liveChatLastCount = counts; loadLiveChatSidebar(); if (liveChatSelectedUser) loadLiveChatMessages(); }
+            if (changed) {
+                liveChatLastCount = counts;
+                loadLiveChatSidebar();
+                if (liveChatSelectedUser) loadLiveChatMessages();
+            }
         }, 2000);
     };
 

@@ -47,8 +47,8 @@
                     <li data-tab="support-tickets">
                         <span class="icon">🎫</span> Support Tickets
                     </li>
-                    <li data-tab="live-chat">
-                        <span class="icon">💬</span> Live Chat
+                    <li data-tab="live-chat" style="position:relative;">
+                        <span class="icon">💬</span> Live Chat <span id="live-chat-tab-badge" class="badge">0</span>
                     </li>
                     <li data-tab="orders">
                         <span class="icon">💳</span> Recent Orders
@@ -204,19 +204,20 @@
             <!-- Live Chat Tab -->
             <section id="live-chat" class="tab-content">
                 <h2>Live Chat</h2>
-                <div id="live-chat-conversations" style="display:flex;gap:1.5rem;min-height:500px;">
-                    <div id="live-chat-sidebar" style="width:240px;flex-shrink:0;border:1px solid rgba(0,255,255,0.08);border-radius:12px;overflow:hidden;background:rgba(0,0,0,0.15);">
-                        <div style="padding:0.8rem;border-bottom:1px solid rgba(0,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--neon-blue);text-transform:uppercase;letter-spacing:1px;">Active Conversations</div>
-                        <div id="live-chat-user-list" style="overflow-y:auto;max-height:440px;">
+                <div class="live-chat-wrap">
+                    <div class="live-chat-sidebar">
+                        <div class="live-chat-sidebar-header">Active Conversations</div>
+                        <div id="live-chat-user-list" class="live-chat-user-list">
                             <!-- User list populated by admin.js -->
                         </div>
                     </div>
-                    <div id="live-chat-main" style="flex:1;border:1px solid rgba(0,255,255,0.08);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;background:rgba(0,0,0,0.15);">
-                        <div id="live-chat-main-header" style="padding:0.8rem 1rem;border-bottom:1px solid rgba(0,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);">Select a conversation</div>
-                        <div id="live-chat-main-messages" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
-                        <div id="live-chat-main-input" style="padding:0.7rem 1rem;border-top:1px solid rgba(0,255,255,0.06);display:none;gap:0.5rem;">
-                            <input type="text" id="live-chat-admin-input" placeholder="Type a reply..." style="flex:1;padding:0.6rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,255,255,0.1);border-radius:10px;color:#fff;font-size:0.85rem;outline:none;">
-                            <button id="live-chat-admin-send" style="padding:0.6rem 1.2rem;background:linear-gradient(135deg,var(--neon-blue),#00dddd);border:none;border-radius:10px;color:#000;font-weight:800;font-size:0.75rem;cursor:pointer;text-transform:uppercase;">Reply</button>
+                    <div class="live-chat-main">
+                        <div id="live-chat-main-header" class="live-chat-main-header">Select a conversation</div>
+                        <div id="live-chat-main-messages" class="live-chat-main-messages"></div>
+                        <div id="live-chat-typing-indicator" class="live-chat-typing" style="display:none;padding:0 1rem 0.3rem;">typing...</div>
+                        <div id="live-chat-main-input" class="live-chat-main-input">
+                            <input type="text" id="live-chat-admin-input" class="live-chat-admin-input" placeholder="Type a reply...">
+                            <button id="live-chat-admin-send" class="live-chat-admin-send">Reply</button>
                         </div>
                     </div>
                 </div>

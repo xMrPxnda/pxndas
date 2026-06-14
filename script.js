@@ -612,6 +612,22 @@ document.addEventListener('DOMContentLoaded', () => {
         chatSend.addEventListener('click', sendMsg);
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
 
+        // Typing indicator
+        let typingTimer = null;
+        chatInput.addEventListener('input', () => {
+            const session = Security.secureStore.get('pxndas_logged_in');
+            if (!session) return;
+            const typing = Security.secureStore.get('live_chat_typing') || {};
+            typing[session.username] = Date.now();
+            Security.secureStore.set('live_chat_typing', typing);
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+                const t = Security.secureStore.get('live_chat_typing') || {};
+                delete t[session.username];
+                Security.secureStore.set('live_chat_typing', t);
+            }, 3000);
+        });
+
         // Poll for new messages
         let lastCount = 0;
         setInterval(() => {
@@ -624,6 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadLiveMessages(session.username);
             }
         }, 2000);
+
+        // Click outside to close
+        document.addEventListener('click', (e) => {
+            if (chatPanel.classList.contains('open') && !chatPanel.contains(e.target) && e.target !== chatBtn && !chatBtn.contains(e.target)) {
+                chatPanel.classList.remove('open');
+            }
+        });
     }
 
     const loadLiveMessages = (username) => {
@@ -639,8 +662,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const div = document.createElement('div');
             div.className = 'live-chat-msg ' + (m.from === 'user' ? 'user' : 'admin');
             const label = m.from === 'user' ? 'You' : 'Support';
-            const time = new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            div.innerHTML = `<div class="bubble"><div class="sender-label">${label} · ${time}</div>${Security.sanitize(m.text)}</div>`;
+            const elapsed = Date.now() - m.time;
+            let timeStr;
+            if (elapsed < 60000) timeStr = 'just now';
+            else if (elapsed < 3600000) timeStr = Math.floor(elapsed / 60000) + 'm ago';
+            else if (elapsed < 86400000) timeStr = Math.floor(elapsed / 3600000) + 'h ago';
+            else timeStr = new Date(m.time).toLocaleDateString();
+            div.innerHTML = `<div class="bubble"><div class="sender-label">${label} · ${timeStr}</div>${Security.sanitize(m.text)}</div>`;
             chatMessages.appendChild(div);
         });
         chatMessages.scrollTop = chatMessages.scrollHeight;
