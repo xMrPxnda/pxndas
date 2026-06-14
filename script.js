@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const grid = document.getElementById('productGrid');
         if (!grid) return;
         const accounts = Security.secureStore.get('store_accounts') || [];
-        accounts.forEach(acc => {
+        accounts.forEach((acc, i) => {
             const card = document.createElement('div');
             card.className = 'product-card';
             card.dataset.category = acc.category || 'other';
@@ -356,11 +356,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+            card.dataset.accIndex = i;
+            card.style.cursor = 'pointer';
             grid.appendChild(card);
+
+            // Open detail modal on card click
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.add-to-cart')) return;
+                openDetailModal(accounts[card.dataset.accIndex]);
+            });
 
             // Wire up the add-to-cart button
             const btn = card.querySelector('.add-to-cart');
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const name = card.querySelector('h3').textContent;
                 const price = parseFloat(card.querySelector('.price').textContent.replace('$', ''));
                 cart.push({ name, price });
@@ -384,6 +393,49 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     };
+    
+    // Product detail modal
+    const detailModal = document.getElementById('productDetailModal');
+    const closeDetailBtn = document.getElementById('closeProductDetail');
+    const openDetailModal = (acc) => {
+        if (!detailModal || !acc) return;
+        const hasImage = acc.image && acc.image.startsWith('data:');
+        document.getElementById('detailImage').innerHTML = hasImage ? '' : Security.sanitize(acc.icon || '🔑');
+        document.getElementById('detailImage').style.backgroundImage = hasImage ? `url('${Security.sanitize(acc.image)}')` : '';
+        document.getElementById('detailImage').style.backgroundSize = 'cover';
+        document.getElementById('detailImage').style.backgroundPosition = 'center';
+        document.getElementById('detailCategory').textContent = (acc.category || 'other').toUpperCase();
+        document.getElementById('detailTitle').textContent = acc.title;
+        document.getElementById('detailDesc').textContent = acc.desc;
+        document.getElementById('detailPrice').textContent = `$${acc.price}`;
+        const stockEl = document.getElementById('detailStock');
+        const stock = parseInt(acc.stock) || 0;
+        stockEl.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
+        stockEl.className = 'detail-stock' + (stock > 0 ? '' : ' out');
+        const addBtn = document.getElementById('detailAddToCart');
+        addBtn.onclick = null;
+        addBtn.textContent = 'Add to Cart';
+        addBtn.style.background = '';
+        addBtn.style.borderColor = '';
+        addBtn.style.color = '';
+        addBtn.disabled = false;
+        addBtn.addEventListener('click', function handler() {
+            cart.push({ name: acc.title, price: parseFloat(acc.price) });
+            saveCart();
+            animateCount();
+            addBtn.textContent = '✓ Added to Cart';
+            addBtn.style.background = 'var(--secondary)';
+            addBtn.style.borderColor = 'var(--secondary)';
+            addBtn.style.color = 'white';
+            addBtn.disabled = true;
+            setTimeout(() => { detailModal.style.display = 'none'; }, 600);
+            addBtn.removeEventListener('click', handler);
+        });
+        detailModal.style.display = 'block';
+    };
+    if (closeDetailBtn) {
+        closeDetailBtn.addEventListener('click', () => { detailModal.style.display = 'none'; });
+    }
 
     loadStoreAccounts();
 
