@@ -415,11 +415,90 @@ document.addEventListener('DOMContentLoaded', () => {
                         <strong style="color: #fff;">${Security.sanitize(post.title)}</strong>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">${Security.sanitize(post.date)}</div>
                     </div>
-                    <button class="btn-delete" data-index="${i}">Delete</button>
+                    <div style="display:flex;gap:0.4rem;">
+                        <button class="btn-edit" data-index="${i}" style="padding:0.4rem 0.7rem;background:rgba(0,255,255,0.1);border:1px solid rgba(0,255,255,0.2);border-radius:6px;color:var(--neon-blue);cursor:pointer;font-size:0.7rem;">Edit</button>
+                        <button class="btn-delete" data-index="${i}" style="padding:0.4rem 0.7rem;background:rgba(255,0,100,0.1);border:1px solid rgba(255,0,100,0.2);border-radius:6px;color:var(--neon-pink);cursor:pointer;font-size:0.7rem;">Delete</button>
+                    </div>
                 </div>
             `).join('')
             : '<p style="color: var(--text-muted); text-align: center;">No posts yet.</p>';
     };
+
+    let editingPostIndex = -1;
+
+    const postForm = document.getElementById('newPostForm');
+    const postTitleInp = document.getElementById('postTitle');
+    const postContentInp = document.getElementById('postContent');
+    const postFormH3 = document.querySelector('#content-manager .admin-form-container h3');
+
+    if (postForm) {
+        postForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = postTitleInp.value.trim();
+            const content = postContentInp.value.trim();
+            if (!title || !content) { Security.toast.show('Title and content required.', 'warning'); return; }
+            const posts = Security.secureStore.get('pxnda_posts') || [];
+
+            if (editingPostIndex >= 0 && editingPostIndex < posts.length) {
+                posts[editingPostIndex].title = Security.sanitize(title);
+                posts[editingPostIndex].content = Security.sanitize(content);
+                Security.secureStore.set('pxnda_posts', posts);
+                Security.auditLog('POST_EDITED', { title });
+                Security.toast.show('Post updated.', 'success');
+                editingPostIndex = -1;
+                if (postFormH3) postFormH3.textContent = 'Create New Entry';
+                document.querySelector('#content-manager .btn-primary').textContent = 'Publish';
+            } else {
+                posts.unshift({
+                    id: Date.now(),
+                    title: Security.sanitize(title),
+                    content: Security.sanitize(content),
+                    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                });
+                Security.secureStore.set('pxnda_posts', posts);
+                Security.auditLog('POST_ADDED', { title });
+                Security.toast.show('Post published!', 'success');
+            }
+            postForm.reset();
+            loadAdminPosts();
+        });
+    }
+
+    if (adminPostsList) {
+        adminPostsList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.index);
+            const posts = Security.secureStore.get('pxnda_posts') || [];
+            if (btn.classList.contains('btn-delete')) {
+                if (!confirm('Delete this post?')) return;
+                if (index >= 0 && index < posts.length) {
+                    const deleted = posts.splice(index, 1);
+                    Security.secureStore.set('pxnda_posts', posts);
+                    Security.auditLog('POST_DELETED', { title: deleted[0]?.title });
+                    if (editingPostIndex === index) {
+                        editingPostIndex = -1;
+                        if (postFormH3) postFormH3.textContent = 'Create New Entry';
+                        document.querySelector('#content-manager .btn-primary').textContent = 'Publish';
+                        postForm.reset();
+                    } else if (editingPostIndex > index) {
+                        editingPostIndex--;
+                    }
+                    loadAdminPosts();
+                }
+            } else if (btn.classList.contains('btn-edit')) {
+                if (index >= 0 && index < posts.length) {
+                    const post = posts[index];
+                    postTitleInp.value = post.title;
+                    postContentInp.value = post.content;
+                    editingPostIndex = index;
+                    if (postFormH3) postFormH3.textContent = 'Edit Post';
+                    document.querySelector('#content-manager .btn-primary').textContent = 'Update';
+                    postTitleInp.focus();
+                }
+            }
+        });
+    }
 
     const loadAccounts = () => {
         if (!adminAccountsList) return;
@@ -749,23 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ---- Post & Account Deletion ----
-
-    if (adminPostsList) {
-        adminPostsList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-delete')) {
-                if (!confirm('Delete this post?')) return;
-                const index = parseInt(e.target.dataset.index);
-                const posts = Security.secureStore.get('pxnda_posts') || [];
-                if (index >= 0 && index < posts.length) {
-                    const deleted = posts.splice(index, 1);
-                    Security.secureStore.set('pxnda_posts', posts);
-                    Security.auditLog('POST_DELETED', { title: deleted[0]?.title });
-                    loadAdminPosts();
-                }
-            }
-        });
-    }
+    // ---- Account Deletion ----
 
     if (adminAccountsList) {
         adminAccountsList.addEventListener('click', (e) => {
