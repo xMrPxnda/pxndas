@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadAdminPosts = () => {
         if (!adminPostsList) return;
-        const posts = Security.secureStore.get('nexus_posts') || [];
+        const posts = Security.secureStore.get('pxnda_posts') || [];
         adminPostsList.innerHTML = posts.length
             ? posts.map((post, i) => `
                 <div class="manage-item">
@@ -734,13 +734,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const posts = Security.secureStore.get('nexus_posts') || [];
+            const posts = Security.secureStore.get('pxnda_posts') || [];
             posts.unshift({
                 title: Security.sanitize(rawTitle),
                 content: Security.sanitize(rawContent),
                 date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()
             });
-            Security.secureStore.set('nexus_posts', posts);
+            Security.secureStore.set('pxnda_posts', posts);
             Security.auditLog('POST_CREATED', { title: rawTitle });
 
             Security.toast.show('Post published successfully!', 'success');
@@ -756,10 +756,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.classList.contains('btn-delete')) {
                 if (!confirm('Delete this post?')) return;
                 const index = parseInt(e.target.dataset.index);
-                const posts = Security.secureStore.get('nexus_posts') || [];
+                const posts = Security.secureStore.get('pxnda_posts') || [];
                 if (index >= 0 && index < posts.length) {
                     const deleted = posts.splice(index, 1);
-                    Security.secureStore.set('nexus_posts', posts);
+                    Security.secureStore.set('pxnda_posts', posts);
                     Security.auditLog('POST_DELETED', { title: deleted[0]?.title });
                     loadAdminPosts();
                 }

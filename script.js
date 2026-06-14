@@ -300,11 +300,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const loadNexusPosts = () => {
+    const loadPosts = () => {
         const postsGrid = document.getElementById('postsGrid');
         if (!postsGrid) return;
 
-        const posts = Security.secureStore.get('nexus_posts') || [];
+        const posts = Security.secureStore.get('pxnda_posts') || [];
         const escapeHtml = (str) => Security.sanitize(str || '');
 
         const renderPost = (post, index) => `
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         postsGrid.innerHTML = renderPost(staticPost, 0) + posts.map((post, i) => renderPost(post, i+1)).join('');
     };
 
-    loadNexusPosts();
+    loadPosts();
 
     // Load dynamic store accounts from admin
     const loadStoreAccounts = () => {

@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Store data snapshot ---
     const storeData = () => {
         const accounts = Security.secureStore.get('store_accounts') || [];
-        const posts = Security.secureStore.get('nexus_posts') || [];
+        const posts = Security.secureStore.get('pxnda_posts') || [];
         return { accounts, posts };
     };
 

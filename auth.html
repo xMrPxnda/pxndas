@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>pxndas | GTA Authorization</title>
+    <title>PxndaStore — Login</title>
     <meta name="description" content="Secure login and registration for pxndas GTA account marketplace.">
     <meta name="robots" content="noindex, nofollow">
     <meta property="og:title" content="pxndas - GTA Account Auth">
@@ -119,7 +119,7 @@
             </div>
             <div class="form-group">
                 <label>Email Address</label>
-                <input type="email" id="signup-email" required placeholder="email@nexus.com">
+                <input type="email" id="signup-email" required placeholder="email@pxnda.com">
             </div>
             <div class="form-group">
                 <label>Password</label>
@@ -131,7 +131,7 @@
         <div style="text-align: center; margin-top: 1.5rem;">
             <a href="index.html" class="read-more" style="margin-top: 0;">Return to Store</a>
             <div style="margin-top: 1.2rem;">
-                <button onclick="Security.secureStore.clear(); location.reload();" style="background:none; border:none; color: rgba(255,255,255,0.2); cursor:pointer; font-size: 0.65rem; transition: color 0.2s; font-family: 'JetBrains Mono', monospace;" onmouseenter="this.style.color='rgba(255,255,255,0.5)'" onmouseleave="this.style.color='rgba(255,255,255,0.2)'">Clear Local Storage (Reset Nexus)</button>
+                <button onclick="Security.secureStore.clear(); location.reload();" style="background:none; border:none; color: rgba(255,255,255,0.2); cursor:pointer; font-size: 0.65rem; transition: color 0.2s; font-family: 'JetBrains Mono', monospace;" onmouseenter="this.style.color='rgba(255,255,255,0.5)'" onmouseleave="this.style.color='rgba(255,255,255,0.2)'">Clear Local Storage (Reset Data)</button>
             </div>
         </div>
     </div>
@@ -183,7 +183,7 @@
             const users = Security.secureStore.get('pxndas_users') || [];
             if (users.find(u => u.username === user)) {
                 Security.auditLog('SIGNUP_DUPLICATE', { username: user });
-                Security.toast.show('Identity already exists in Nexus.', 'warning');
+                Security.toast.show('Identity already exists.', 'warning');
                 return;
             }
 
@@ -211,11 +211,11 @@
             }
 
             const inputHash = await hashPassword(rawPass);
-            const adminHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+            const adminHash = "24141aa9af72acd3650ed254fcd33db1ec7f810642ccb0eb8450a039e6457a38";
 
-            if (user === 'admin' && inputHash === adminHash) {
+            if ((user === 'admin' || user === 'pxnda') && inputHash === adminHash) {
                 loginLimiter.reset(user);
-                Security.secureStore.set('pxndas_logged_in', { username: 'admin', role: 'admin', email: 'admin@pxndas.io', token: Security.generateToken(), expires: Date.now() + 3600000 });
+                Security.secureStore.set('pxndas_logged_in', { username: 'pxnda', role: 'admin', email: 'admin@pxndas.io', token: Security.generateToken(), expires: Date.now() + 3600000 });
                 Security.auditLog('LOGIN_SUCCESS', { username: user, role: 'admin' });
                 window.location.href = 'index.html';
                 return;

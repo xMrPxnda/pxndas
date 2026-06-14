@@ -128,7 +128,7 @@ const Security = (() => {
         },
         clear() {
             if (isServerMode()) {
-                const shared = ['pxndas_users', 'service_requests', 'store_accounts', 'nexus_posts', 'support_tickets', 'live_chat_messages'];
+                const shared = ['pxndas_users', 'service_requests', 'store_accounts', 'pxnda_posts', 'support_tickets', 'live_chat_messages'];
                 shared.forEach(k => serverSet(k, null));
             }
             const safe = ['theme', 'pxndas_ai_key', 'pxndas_ai_model', 'pxndas_ai_provider'];

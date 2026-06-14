@@ -1251,14 +1251,14 @@ footer {
     font-size: 0.8rem;
 }
 
-#nexus-feed {
+#feed {
     max-width: 1200px;
     margin: 10rem auto;
     padding: 0 2rem;
     position: relative;
 }
 
-#nexus-feed::before {
+#feed::before {
     content: "LIVE_DATA_STREAM";
     position: absolute;
     top: -40px; left: 2rem;

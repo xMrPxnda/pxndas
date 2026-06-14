@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const users = Security.secureStore.get('pxndas_users') || [];
         const requests = Security.secureStore.get('service_requests') || [];
         const accounts = Security.secureStore.get('store_accounts') || [];
-        const posts = Security.secureStore.get('nexus_posts') || [];
+        const posts = Security.secureStore.get('pxnda_posts') || [];
         const paid = requests.filter(r => r.status === 'PAID');
         const revenue = paid.reduce((s, r) => s + parseFloat((r.total || '').replace('$', '') || 0), 0);
         const audit = Security.secureStore.get('pxndas_audit_log') || [];
@@ -104,35 +104,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         add_post: {
-            desc: 'Add a post to the Nexus feed (announcements/news).',
+            desc: 'Add a post to the feed (announcements/news).',
             args: {
                 title: 'string (required) — post title',
                 content: 'string (required) — post content/body'
             },
             execute: args => {
                 if (!args.title || !args.content) return { error: 'title and content are required' };
-                const posts = Security.secureStore.get('nexus_posts') || [];
+                const posts = Security.secureStore.get('pxnda_posts') || [];
                 posts.push({
                     id: Date.now(),
                     title: args.title,
                     content: args.content,
                     date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                 });
-                Security.secureStore.set('nexus_posts', posts);
+                Security.secureStore.set('pxnda_posts', posts);
                 Security.auditLog('AI_ADD_POST', { title: args.title });
-                return { success: true, message: `Posted "${args.title}" to Nexus feed` };
+                return { success: true, message: `Posted "${args.title}" to feed` };
             }
         },
         delete_post: {
-            desc: 'Delete a Nexus feed post by ID.',
+            desc: 'Delete a feed post by ID.',
             args: { id: 'number (required) — post ID to delete' },
             confirm: true,
             execute: args => {
-                const posts = Security.secureStore.get('nexus_posts') || [];
+                const posts = Security.secureStore.get('pxnda_posts') || [];
                 const idx = posts.findIndex(p => p.id === args.id || p.id == args.id);
                 if (idx === -1) return { error: `Post with id ${args.id} not found` };
                 const removed = posts.splice(idx, 1)[0];
-                Security.secureStore.set('nexus_posts', posts);
+                Security.secureStore.set('pxnda_posts', posts);
                 Security.auditLog('AI_DELETE_POST', { id: args.id, title: removed.title });
                 return { success: true, message: `Deleted post "${removed.title}"` };
             }
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 - Total orders: ${data.requests.length} (${data.paid.length} paid)
 - Total revenue: $${data.revenue.toFixed(2)}
 - GTA account listings: ${data.accounts.length}
-- Nexus feed posts: ${data.posts.length}
+- Feed posts: ${data.posts.length}
 - Support tickets: ${data.tickets.length}
 - Payment mode: ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}
 
@@ -370,8 +370,8 @@ You: Here are your orders:
             data.accounts.forEach((a, i) => { reply += `\n${i + 1}. **${Security.sanitize(a.title)}** — $${a.price} (${a.category})`; });
             return reply;
         }
-        if (/^(feed|posts?|nexus)\b/.test(q)) {
-            if (!data.posts.length) return `📡 **Nexus Feed:** No posts yet.`;
+        if (/^(feed|posts?)\b/.test(q)) {
+            if (!data.posts.length)             return `📡 **Feed:** No posts yet.`;
             let reply = `📡 **${data.posts.length} post${data.posts.length !== 1 ? 's' : ''}:**\n`;
             data.posts.slice(0, 5).forEach((p, i) => { reply += `\n${i + 1}. **${Security.sanitize(p.title)}** (${p.date})`; });
             return reply;
