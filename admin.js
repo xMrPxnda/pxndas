@@ -18,11 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const accountForm = document.getElementById('accountForm');
     const adminAccountsList = document.getElementById('adminAccountsList');
     const accImageInput = document.getElementById('acc-image');
-    const imagePreview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    const removeImageBtn = document.getElementById('removeImage');
+    const imageGallery = document.getElementById('imageGallery');
     const uploadBtnLabel = document.getElementById('uploadBtnLabel');
-    let currentImageData = null;
+    let currentImages = [];
 
     // ---- Data Loaders ----
 
@@ -506,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         adminAccountsList.innerHTML = accounts.length
             ? accounts.map((a, i) => `
                 <div class="manage-item" style="gap:1rem;">
-                    ${a.image ? `<img src="${Security.sanitize(a.image)}" alt="" style="width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);flex-shrink:0;">` : `<div style="width:50px;height:50px;border-radius:8px;background:rgba(0,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">${Security.sanitize(a.icon || '🔑')}</div>`}
+                    ${a.images?.length ? `<img src="${Security.sanitize(a.images[0])}" alt="" style="width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);flex-shrink:0;">` : a.image ? `<img src="${Security.sanitize(a.image)}" alt="" style="width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);flex-shrink:0;">` : `<div style="width:50px;height:50px;border-radius:8px;background:rgba(0,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">${Security.sanitize(a.icon || '🔑')}</div>`}
                     <div style="flex:1;min-width:0;">
                         <strong style="color:#fff;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Security.sanitize(a.title)}</strong>
                         <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">$${Security.sanitize(a.price)} — ${Security.sanitize(a.category)}</div>
@@ -524,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = accounts.length
             ? accounts.map((a, i) => `
                 <tr>
-                    <td>${a.image ? `<img src="${Security.sanitize(a.image)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);">` : `<span style="font-size:1.2rem;">${a.icon || '🔑'}</span>`}</td>
+                    <td>${a.images?.length ? `<img src="${Security.sanitize(a.images[0])}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);">` : a.image ? `<img src="${Security.sanitize(a.image)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);">` : `<span style="font-size:1.2rem;">${a.icon || '🔑'}</span>`}</td>
                     <td style="font-weight:600;color:#fff;">${Security.sanitize(a.title)}</td>
                     <td><span class="category-tag" style="background:rgba(0,255,255,0.08);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;">${Security.sanitize(a.category)}</span></td>
                     <td style="color:var(--neon-cyan);font-weight:800;">$${Security.sanitize(a.price)}</td>
@@ -596,48 +594,60 @@ document.addEventListener('DOMContentLoaded', () => {
                 category,
                 stock: Math.max(1, stock),
                 icon: '📦',
-                image: currentImageData
+                images: currentImages.length ? currentImages : [],
+                image: currentImages.length ? currentImages[0] : null
             });
             Security.secureStore.set('store_accounts', accounts);
             Security.auditLog('ACCOUNT_LISTED', { title, stock });
 
             Security.toast.show('Account listed successfully!', 'success');
             accountForm.reset();
-            currentImageData = null;
-            imagePreview.style.display = 'none';
-            previewImg.src = '';
-            uploadBtnLabel.textContent = '+ Choose Image';
+            currentImages = [];
+            imageGallery.innerHTML = '';
+            uploadBtnLabel.textContent = '+ Add Images';
             loadAccounts();
             loadInventory();
         });
     }
 
-    // Image upload preview
+    // Handle multiple image uploads
     if (accImageInput) {
         accImageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                currentImageData = ev.target.result;
-                previewImg.src = currentImageData;
-                imagePreview.style.display = 'flex';
-                uploadBtnLabel.textContent = 'Change Image';
-            };
-            reader.readAsDataURL(file);
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+            let loaded = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    currentImages.push(ev.target.result);
+                    renderGallery();
+                    loaded++;
+                    if (loaded === files.length) {
+                        accImageInput.value = '';
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            uploadBtnLabel.textContent = '+ Add More';
         });
     }
 
-    // Remove image
-    if (removeImageBtn) {
-        removeImageBtn.addEventListener('click', () => {
-            currentImageData = null;
-            imagePreview.style.display = 'none';
-            previewImg.src = '';
-            accImageInput.value = '';
-            uploadBtnLabel.textContent = '+ Choose Image';
+    const renderGallery = () => {
+        imageGallery.innerHTML = currentImages.map((img, idx) =>
+            `<div class="image-gallery-item">
+                <img src="${Security.sanitize(img)}" alt="Listing image ${idx+1}">
+                <button type="button" class="btn-remove-img" data-idx="${idx}">&times;</button>
+            </div>`
+        ).join('');
+        imageGallery.querySelectorAll('.btn-remove-img').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx);
+                currentImages.splice(idx, 1);
+                renderGallery();
+                if (!currentImages.length) uploadBtnLabel.textContent = '+ Add Images';
+            });
         });
-    }
+    };
 
     // ---- Tab Switching ----
 

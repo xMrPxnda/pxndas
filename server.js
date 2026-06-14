@@ -8,8 +8,23 @@ const PORT = process.env.PORT || 8000;
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
+// Seed default data files on first run (survives Render redeploy)
+const seedFile = (name, data) => {
+    const fp = path.join(dataDir, name + '.json');
+    if (!fs.existsSync(fp)) {
+        fs.writeFileSync(fp, JSON.stringify(data, null, 2), 'utf-8');
+        console.log(`Seeded ${name}.json`);
+    }
+};
+seedFile('pxnda_posts', []);
+seedFile('store_accounts', []);
+seedFile('pxndas_users', []);
+seedFile('service_requests', []);
+seedFile('support_tickets', []);
+seedFile('live_chat_messages', []);
+
 // Middleware
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // CORS

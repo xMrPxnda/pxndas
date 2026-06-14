@@ -1508,6 +1508,48 @@ footer {
     position: absolute;
     inset: 0;
     background: linear-gradient(to bottom, transparent 40%, var(--bg-dark) 100%);
+    z-index: 1;
+}
+.pd-gallery-prev, .pd-gallery-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    background: rgba(5, 5, 8, 0.6);
+    color: var(--neon-blue);
+    font-size: 1.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: var(--transition);
+    line-height: 1;
+}
+.pd-gallery-prev:hover, .pd-gallery-next:hover {
+    background: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+.pd-gallery-prev { left: 1rem; }
+.pd-gallery-next { right: 1rem; }
+.pd-gallery-counter {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(5,5,8,0.5);
+    padding: 3px 12px;
+    border-radius: 50px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.06);
 }
 .pd-hero-content {
     position: absolute;

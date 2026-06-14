@@ -342,10 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'product-card';
             card.dataset.category = acc.category || 'other';
-            const hasImage = acc.image && acc.image.startsWith('data:');
+            const cardImage = (acc.images?.length ? acc.images[0] : null) || acc.image || null;
+            const hasImage = cardImage && cardImage.startsWith('data:');
             card.innerHTML = `
                 <span class="product-status" style="background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 15px rgba(245,158,11,0.3);">Listed</span>
-                <div class="card-image" style="${hasImage ? `background-image:url('${Security.sanitize(acc.image)}');background-size:cover;background-position:center;font-size:0;` : ''}">${hasImage ? '' : Security.sanitize(acc.icon || '🔑')}</div>
+                <div class="card-image" style="${hasImage ? `background-image:url('${Security.sanitize(cardImage)}');background-size:cover;background-position:center;font-size:0;` : ''}">${hasImage ? '' : Security.sanitize(acc.icon || '🔑')}</div>
                 <div class="card-body">
                     <span class="category-tag">${Security.sanitize((acc.category || 'other').toUpperCase())}</span>
                     <h3>${Security.sanitize(acc.title)}</h3>
@@ -412,16 +413,48 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPdAccount = acc;
         pdQty = 1;
 
-        const hasImage = acc.image && acc.image.startsWith('data:');
+        const images = (acc.images && acc.images.length ? acc.images : (acc.image ? [acc.image] : []));
+        let galleryIdx = 0;
+        const pdHero = document.getElementById('pdHero');
         const heroBg = document.getElementById('pdHeroBg');
-        if (hasImage) {
-            heroBg.style.backgroundImage = `url('${Security.sanitize(acc.image)}')`;
+        const showGalleryImage = (idx) => {
+            if (!images.length) {
+                heroBg.style.backgroundImage = '';
+                heroBg.classList.remove('has-image');
+                heroBg.innerHTML = '';
+                return;
+            }
+            heroBg.style.backgroundImage = `url('${Security.sanitize(images[idx])}')`;
             heroBg.classList.add('has-image');
             heroBg.innerHTML = '';
-        } else {
-            heroBg.style.backgroundImage = '';
-            heroBg.classList.remove('has-image');
+            const prevBtn = pdHero.querySelector('.pd-gallery-prev');
+            const nextBtn = pdHero.querySelector('.pd-gallery-next');
+            const counter = pdHero.querySelector('.pd-gallery-counter');
+            if (counter) counter.textContent = `${idx + 1} / ${images.length}`;
+            if (prevBtn) prevBtn.style.display = idx > 0 ? 'flex' : 'none';
+            if (nextBtn) nextBtn.style.display = idx < images.length - 1 ? 'flex' : 'none';
+        };
+        // Remove old gallery nav if any
+        pdHero.querySelectorAll('.pd-gallery-prev, .pd-gallery-next, .pd-gallery-counter').forEach(el => el.remove());
+        heroBg.innerHTML = '';
+        if (!images.length) {
             heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
+        } else {
+            if (images.length > 1) {
+                const navHtml = `
+                    <button class="pd-gallery-prev">‹</button>
+                    <button class="pd-gallery-next">›</button>
+                    <span class="pd-gallery-counter">1 / ${images.length}</span>
+                `;
+                pdHero.insertAdjacentHTML('beforeend', navHtml);
+                setTimeout(() => {
+                    const prev = pdHero.querySelector('.pd-gallery-prev');
+                    const next = pdHero.querySelector('.pd-gallery-next');
+                    if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); if (galleryIdx > 0) { galleryIdx--; showGalleryImage(galleryIdx); } });
+                    if (next) next.addEventListener('click', (e) => { e.stopPropagation(); if (galleryIdx < images.length - 1) { galleryIdx++; showGalleryImage(galleryIdx); } });
+                });
+            }
+            showGalleryImage(0);
         }
 
         document.getElementById('pdCategory').textContent = (acc.category || 'other').toUpperCase();
@@ -446,8 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (desc.includes('vehicle') || desc.includes('car') || desc.includes('garage')) extras.push('Rare vehicles & garages');
         if (desc.includes('recovery') || desc.includes('email') || desc.includes('access')) extras.push('Full email & account access');
         extras.push('Secure delivery & setup');
-        extras.push('Lifetime replacement warranty');
-        const uniqueExtras = [...new Set(extras)].slice(0, 8);
+        const uniqueExtras = [...new Set(extras)].slice(0, 7);
         featuresEl.innerHTML = uniqueExtras.map(f =>
             `<li><span class="pf-icon">✓</span> ${Security.sanitize(f)}</li>`
         ).join('');

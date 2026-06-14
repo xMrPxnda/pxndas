@@ -260,16 +260,13 @@
                             <input type="number" id="acc-stock" min="1" max="999" value="1" style="width:100px;">
                         </div>
                         <div class="form-group">
-                            <label>Listing Image</label>
+                            <label>Listing Images</label>
                             <div class="image-upload-wrapper">
                                 <label class="image-upload-btn" for="acc-image">
-                                    <span id="uploadBtnLabel">+ Choose Image</span>
+                                    <span id="uploadBtnLabel">+ Add Images</span>
                                 </label>
-                                <input type="file" id="acc-image" accept="image/*" style="display:none;">
-                                <div id="imagePreview" class="image-preview" style="display:none;">
-                                    <img id="previewImg" alt="Preview">
-                                    <button type="button" id="removeImage" class="btn-remove-img">&times;</button>
-                                </div>
+                                <input type="file" id="acc-image" accept="image/*" multiple style="display:none;">
+                                <div id="imageGallery" class="image-gallery"></div>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary">Publish Listing</button>
