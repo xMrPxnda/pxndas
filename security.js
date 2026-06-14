@@ -89,9 +89,10 @@ const Security = (() => {
         if (!isServerMode() || localKeys.has(key)) return;
         const raw = localStorage.getItem(key);
         if (!raw) return;
-        // Check if server already has data
+        // Check if server already has data (treat empty arrays as no data)
         const serverVal = serverGet(key);
-        if (serverVal !== null && serverVal !== undefined) return;
+        const hasData = serverVal !== null && serverVal !== undefined && !(Array.isArray(serverVal) && !serverVal.length);
+        if (hasData) return;
         // Try to decode and migrate
         try {
             const decoded = decode(raw);
@@ -117,9 +118,12 @@ const Security = (() => {
             if (isServerMode() && !localKeys.has(key)) {
                 migrateIfNeeded(key);
                 const serverVal = serverGet(key);
-                // If server returned empty (null or empty array), try restoring from backup
+                // If server returned empty, try restoring from backup or raw localStorage
                 if (serverVal === null || serverVal === undefined || (Array.isArray(serverVal) && !serverVal.length)) {
-                    const bak = localStorage.getItem(BAK_PREFIX + key);
+                    // Check backup first (created by recent set() calls)
+                    let bak = localStorage.getItem(BAK_PREFIX + key);
+                    // Fallback to raw localStorage key (from older sessions)
+                    if (!bak) bak = localStorage.getItem(key);
                     if (bak) {
                         try {
                             const decoded = decode(bak);
