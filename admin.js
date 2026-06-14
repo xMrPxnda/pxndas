@@ -517,6 +517,57 @@ document.addEventListener('DOMContentLoaded', () => {
             : '<p style="color: var(--text-muted); text-align: center;">No listings yet.</p>';
     };
 
+    const loadInventory = () => {
+        const tbody = document.getElementById('inventory-table-body');
+        if (!tbody) return;
+        const accounts = Security.secureStore.get('store_accounts') || [];
+        tbody.innerHTML = accounts.length
+            ? accounts.map((a, i) => `
+                <tr>
+                    <td>${a.image ? `<img src="${Security.sanitize(a.image)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(0,255,255,0.15);">` : `<span style="font-size:1.2rem;">${a.icon || '🔑'}</span>`}</td>
+                    <td style="font-weight:600;color:#fff;">${Security.sanitize(a.title)}</td>
+                    <td><span class="category-tag" style="background:rgba(0,255,255,0.08);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;">${Security.sanitize(a.category)}</span></td>
+                    <td style="color:var(--neon-cyan);font-weight:800;">$${Security.sanitize(a.price)}</td>
+                    <td><span style="color:${(a.stock || 1) > 5 ? 'var(--secondary)' : 'var(--neon-yellow)'};">${a.stock || 1}</span></td>
+                    <td>
+                        <button class="btn-inv-stock" data-index="${i}" style="padding:0.3rem 0.6rem;background:rgba(0,255,255,0.1);border:1px solid rgba(0,255,255,0.2);border-radius:6px;color:var(--neon-blue);cursor:pointer;font-size:0.65rem;">+ Stock</button>
+                        <button class="btn-delete" data-index="${i}" style="padding:0.3rem 0.6rem;background:rgba(255,0,100,0.1);border:1px solid rgba(255,0,100,0.2);border-radius:6px;color:var(--neon-pink);cursor:pointer;font-size:0.65rem;">Remove</button>
+                    </td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No accounts in inventory.</td></tr>';
+    };
+
+    // Inventory stock adjust and delete
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const index = parseInt(btn.dataset.index);
+        if (isNaN(index)) return;
+        const accounts = Security.secureStore.get('store_accounts') || [];
+        if (btn.classList.contains('btn-inv-stock')) {
+            const newStock = prompt('New stock quantity:', accounts[index]?.stock || 1);
+            if (newStock !== null) {
+                const n = parseInt(newStock);
+                if (!isNaN(n) && n >= 0) {
+                    accounts[index].stock = n;
+                    Security.secureStore.set('store_accounts', accounts);
+                    loadInventory();
+                    loadAccounts();
+                }
+            }
+        } else if (btn.classList.contains('btn-delete')) {
+            if (!confirm('Remove this account from inventory?')) return;
+            if (index >= 0 && index < accounts.length) {
+                accounts.splice(index, 1);
+                Security.secureStore.set('store_accounts', accounts);
+                Security.auditLog('ACCOUNT_DELETED', {});
+                loadInventory();
+                loadAccounts();
+            }
+        }
+    });
+
     if (accountForm) {
         accountForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -524,6 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const desc = document.getElementById('acc-desc').value.trim();
             const price = document.getElementById('acc-price').value;
             const category = document.getElementById('acc-category').value;
+            const stockEl = document.getElementById('acc-stock');
+            const stock = stockEl ? parseInt(stockEl.value) || 1 : 1;
 
             if (!title || !desc || !price) {
                 Security.toast.show('All fields required.', 'warning');
@@ -541,11 +594,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 desc: Security.sanitize(desc),
                 price: priceNum.toFixed(2),
                 category,
+                stock: Math.max(1, stock),
                 icon: '📦',
                 image: currentImageData
             });
             Security.secureStore.set('store_accounts', accounts);
-            Security.auditLog('ACCOUNT_LISTED', { title });
+            Security.auditLog('ACCOUNT_LISTED', { title, stock });
 
             Security.toast.show('Account listed successfully!', 'success');
             accountForm.reset();
@@ -554,6 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
             previewImg.src = '';
             uploadBtnLabel.textContent = '+ Choose Image';
             loadAccounts();
+            loadInventory();
         });
     }
 
@@ -606,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabId === 'orders') loadOrders();
             if (tabId === 'content-manager') loadAdminPosts();
             if (tabId === 'accounts') loadAccounts();
+            if (tabId === 'inventory') loadInventory();
             if (tabId === 'settings') loadSettings();
         });
     });

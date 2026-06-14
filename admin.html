@@ -256,6 +256,10 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>Stock Quantity</label>
+                            <input type="number" id="acc-stock" min="1" max="999" value="1" style="width:100px;">
+                        </div>
+                        <div class="form-group">
                             <label>Listing Image</label>
                             <div class="image-upload-wrapper">
                                 <label class="image-upload-btn" for="acc-image">
@@ -276,6 +280,25 @@
                     <div id="adminAccountsList">
                         <!-- Populated by admin.js -->
                     </div>
+                </div>
+            </section>
+
+            <section id="inventory" class="tab-content">
+                <h2>Full Inventory</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body"></tbody>
+                    </table>
                 </div>
             </section>
 
