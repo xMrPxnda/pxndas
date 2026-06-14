@@ -1,0 +1,3 @@
+@echo off
+echo Starting pxndas Node.js server...
+npm start

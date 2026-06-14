@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pxndas Admin | Command Center</title>
+    <meta name="description" content="Administration panel for pxndas digital marketplace.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚙️</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚙️</text></svg>">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css?v=5">
+</head>
+<body class="dark-theme admin-body">
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">pxndas<span>Admin</span></div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active" data-tab="dashboard">
+                        <span class="icon">📊</span> Dashboard
+                    </li>
+                    <li data-tab="users">
+                        <span class="icon">👥</span> User Management
+                    </li>
+                    <li data-tab="accounts">
+                        <span class="icon">🔑</span> Accounts
+                    </li>
+                    <li data-tab="inventory">
+                        <span class="icon">📦</span> Inventory
+                    </li>
+                    <li data-tab="content-manager">
+                        <span class="icon">📝</span> Content Manager
+                    </li>
+                    <li data-tab="service-requests">
+                        <span class="icon">📩</span> Service Requests
+                    </li>
+                    <li data-tab="support-tickets">
+                        <span class="icon">🎫</span> Support Tickets
+                    </li>
+                    <li data-tab="live-chat">
+                        <span class="icon">💬</span> Live Chat
+                    </li>
+                    <li data-tab="orders">
+                        <span class="icon">💳</span> Recent Orders
+                    </li>
+                    <li data-tab="settings">
+                        <span class="icon">⚙️</span> System Settings
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="index.html" class="btn-back">← Back to Store</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1>Command Center</h1>
+                <div class="admin-profile">
+                    <span class="status-online"></span>
+                    Admin System: <span class="admin-id">ROOT_USER</span>
+                </div>
+            </header>
+
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Revenue</h3>
+                        <p class="stat-value" id="stat-revenue">$0.00</p>
+                        <span class="stat-change positive" id="stat-revenue-change">No data yet</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Registered Users</h3>
+                        <p class="stat-value" id="stat-users">0</p>
+                        <span class="stat-change positive" id="stat-users-change">No data yet</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Pending Orders</h3>
+                        <p class="stat-value" id="stat-pending">0</p>
+                        <span class="stat-change" id="stat-pending-change">Requires action</span>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h2>Live System Feed</h2>
+                    <div class="activity-log" id="activity-log">
+                        <!-- Populated by admin.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Tab -->
+            <section id="users" class="tab-content">
+                <h2>User Management</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>Join Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Populated by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Content Manager Tab -->
+            <section id="content-manager" class="tab-content">
+                <h2>Nexus Feed Manager</h2>
+                <div class="admin-form-container">
+                    <h3>Create New Entry</h3>
+                    <form id="newPostForm">
+                        <div class="form-group">
+                            <label>Post Title</label>
+                            <input type="text" id="postTitle" required placeholder="Enter post title...">
+                        </div>
+                        <div class="form-group">
+                            <label>Post Content</label>
+                            <textarea id="postContent" required placeholder="Enter post content..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Publish to Nexus</button>
+                    </form>
+                </div>
+
+                <div class="manage-list">
+                    <h3>Active Posts</h3>
+                    <div id="adminPostsList">
+                        <!-- List of posts with delete buttons -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Service Requests Tab -->
+            <section id="service-requests" class="tab-content">
+                <h2>Active Service Requests</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer Email</th>
+                                <th>Service Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceRequestsBody">
+                            <!-- Requests will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Support Tickets Tab -->
+            <section id="support-tickets" class="tab-content">
+                <h2>Support Tickets</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Subject</th>
+                                <th>Message</th>
+                                <th>Replies</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supportTicketsBody">
+                            <!-- Tickets will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="ticket-reply-panel" style="display:none;margin-top:1.5rem;border:1px solid rgba(0,255,255,0.1);border-radius:12px;padding:1.5rem;background:rgba(0,0,0,0.2);">
+                    <h3 id="ticket-reply-subject" style="margin-bottom:0.5rem;">Ticket</h3>
+                    <div id="ticket-reply-conversation" style="margin-bottom:1rem;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.6rem;"></div>
+                    <div style="display:flex;gap:0.5rem;">
+                        <input type="text" id="ticket-reply-input" placeholder="Type your reply..." style="flex:1;padding:0.7rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,255,255,0.1);border-radius:10px;color:#fff;font-family:'Inter',sans-serif;font-size:0.85rem;outline:none;">
+                        <button id="ticket-reply-send" style="padding:0.7rem 1.2rem;background:linear-gradient(135deg,var(--neon-blue),#00dddd);border:none;border-radius:10px;color:#000;font-weight:800;font-size:0.75rem;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">Reply</button>
+                        <button id="ticket-reply-close" style="padding:0.7rem 1rem;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);cursor:pointer;font-size:0.75rem;">Close</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Chat Tab -->
+            <section id="live-chat" class="tab-content">
+                <h2>Live Chat</h2>
+                <div id="live-chat-conversations" style="display:flex;gap:1.5rem;min-height:500px;">
+                    <div id="live-chat-sidebar" style="width:240px;flex-shrink:0;border:1px solid rgba(0,255,255,0.08);border-radius:12px;overflow:hidden;background:rgba(0,0,0,0.15);">
+                        <div style="padding:0.8rem;border-bottom:1px solid rgba(0,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--neon-blue);text-transform:uppercase;letter-spacing:1px;">Active Conversations</div>
+                        <div id="live-chat-user-list" style="overflow-y:auto;max-height:440px;">
+                            <!-- User list populated by admin.js -->
+                        </div>
+                    </div>
+                    <div id="live-chat-main" style="flex:1;border:1px solid rgba(0,255,255,0.08);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;background:rgba(0,0,0,0.15);">
+                        <div id="live-chat-main-header" style="padding:0.8rem 1rem;border-bottom:1px solid rgba(0,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);">Select a conversation</div>
+                        <div id="live-chat-main-messages" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
+                        <div id="live-chat-main-input" style="padding:0.7rem 1rem;border-top:1px solid rgba(0,255,255,0.06);display:none;gap:0.5rem;">
+                            <input type="text" id="live-chat-admin-input" placeholder="Type a reply..." style="flex:1;padding:0.6rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,255,255,0.1);border-radius:10px;color:#fff;font-size:0.85rem;outline:none;">
+                            <button id="live-chat-admin-send" style="padding:0.6rem 1.2rem;background:linear-gradient(135deg,var(--neon-blue),#00dddd);border:none;border-radius:10px;color:#000;font-weight:800;font-size:0.75rem;cursor:pointer;text-transform:uppercase;">Reply</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Orders Tab -->
+            <section id="accounts" class="tab-content">
+                <h2>Account Listings</h2>
+                <div class="admin-form-container" style="max-width:700px;">
+                    <h3>Add New Account</h3>
+                    <form id="accountForm">
+                        <div class="form-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>Title</label>
+                                <input type="text" id="acc-title" required placeholder="e.g. Modded Money Account">
+                            </div>
+                            <div class="form-group" style="flex:0 0 120px;">
+                                <label>Price ($)</label>
+                                <input type="number" id="acc-price" step="0.01" min="0.01" max="9999.99" required placeholder="9.99">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="acc-desc" required placeholder="Describe what this account includes..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="acc-category">
+                                <option value="modded">Modded</option>
+                                <option value="money">Money</option>
+                                <option value="rank">Rank</option>
+                                <option value="recovery">Recovery</option>
+                                <option value="bundles">Bundles</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Listing Image</label>
+                            <div class="image-upload-wrapper">
+                                <label class="image-upload-btn" for="acc-image">
+                                    <span id="uploadBtnLabel">+ Choose Image</span>
+                                </label>
+                                <input type="file" id="acc-image" accept="image/*" style="display:none;">
+                                <div id="imagePreview" class="image-preview" style="display:none;">
+                                    <img id="previewImg" alt="Preview">
+                                    <button type="button" id="removeImage" class="btn-remove-img">&times;</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Publish Listing</button>
+                    </form>
+                </div>
+                <div class="manage-list">
+                    <h3>Active Listings</h3>
+                    <div id="adminAccountsList">
+                        <!-- Populated by admin.js -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="orders" class="tab-content">
+                <h2>Recent Orders</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <!-- Populated by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Tab -->
+            <section id="settings" class="tab-content">
+                <h2>System Settings</h2>
+                <div class="settings-grid">
+                    <!-- Payment Mode -->
+                    <div class="settings-card">
+                        <div class="settings-icon">💳</div>
+                        <div>
+                            <h4>Payment Mode</h4>
+                            <p id="settings-payment-mode" class="settings-value">Loading...</p>
+                            <p class="settings-hint">Change in <code>config.js</code> — set <code>PAYMENT_MODE</code> to <code>'test'</code> or <code>'live'</code></p>
+                        </div>
+                    </div>
+
+                    <!-- Idle Timeout -->
+                    <div class="settings-card">
+                        <div class="settings-icon">⏱️</div>
+                        <div>
+                            <h4>Session Idle Timeout</h4>
+                            <div class="settings-control">
+                                <input type="range" id="idleTimeoutSlider" min="5" max="60" value="15">
+                                <span id="idleTimeoutLabel">15 min</span>
+                            </div>
+                            <p class="settings-hint">Auto-logout after inactivity (5–60 min)</p>
+                        </div>
+                    </div>
+
+                    <!-- Data Management -->
+                    <div class="settings-card">
+                        <div class="settings-icon">🗑️</div>
+                        <div>
+                            <h4>Data Management</h4>
+                            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-top:0.5rem;">
+                                <button id="clearOrdersBtn" class="btn btn-sm btn-warning">Clear Orders</button>
+                                <button id="clearAuditBtn" class="btn btn-sm btn-warning">Clear Audit Log</button>
+                                <button id="clearAllBtn" class="btn btn-sm btn-danger">Reset All Data</button>
+                            </div>
+                            <p class="settings-hint">Destructive actions cannot be undone</p>
+                        </div>
+                    </div>
+
+                    <!-- AI Integration -->
+                    <div class="settings-card" style="grid-column:1/-1;">
+                        <div class="settings-icon">🧠</div>
+                        <div style="flex:1;">
+                            <h4>AI Assistant — Real LLM</h4>
+                            <div class="settings-control ai-controls" style="flex-wrap:wrap;">
+                                <select id="aiProvider" style="flex:0 0 130px;">
+                                    <option value="gemini">Google Gemini</option>
+                                    <option value="openrouter">OpenRouter</option>
+                                </select>
+                                <input type="password" id="aiApiKey" placeholder="Paste your API key here...">
+                                <select id="aiModel">
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (free)</option>
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (free)</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                </select>
+                                <button id="saveAiConfig" class="btn btn-sm btn-save-ai">Save</button>
+                                <button id="testAiBtn" class="btn btn-sm btn-test-ai">Test</button>
+                            </div>
+                            <p class="settings-hint">
+                                <strong>Gemini</strong> — free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--neon-blue);">aistudio.google.com/apikey</a> &nbsp;|&nbsp;
+                                <strong>OpenRouter</strong> — free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--neon-blue);">openrouter.ai/keys</a>
+                                <span id="aiStatus" style="display:inline-block;margin-left:0.5rem;color:var(--neon-yellow);font-size:0.7rem;">Not configured</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Storage Info -->
+                    <div class="settings-card">
+                        <div class="settings-icon">💾</div>
+                        <div>
+                            <h4>LocalStorage Usage</h4>
+                            <p id="storageUsage" class="settings-value">Calculating...</p>
+                            <p class="settings-hint">Total space used by pxndas data</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- AI Chatbot (admin only) -->
+    <div id="chat-toggle" title="Pxnda AI">
+        <span>🐼</span>
+    </div>
+    <div id="chat-panel">
+        <div id="chat-header">
+            <div class="chat-status-dot"></div>
+            <div class="chat-title-group">
+                <span class="chat-title-name">PXNDA AI</span>
+                <span class="chat-title-sub">store assistant</span>
+            </div>
+            <span id="chat-header-label">LOCAL</span>
+            <button id="chat-close">&times;</button>
+        </div>
+        <div id="chat-messages">
+            <div class="chat-msg bot">
+                <div class="msg-avatar">🐼</div>
+                <div class="msg-content">
+                    <strong>Pxnda AI</strong>
+                    <p>Hey admin! 🐼 Ask me about your store data — users, revenue, GTA account orders, listings, or anything with an API key in Settings.</p>
+                </div>
+            </div>
+        </div>
+        <div id="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Ask Pxnda AI..." autocomplete="off">
+            <button id="chat-send">Send</button>
+        </div>
+    </div>
+
+    <script src="security.js"></script>
+    <script src="admin.js?v=6"></script>
+    <script src="chatbot.js?v=5"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pxndas | GTA Authorization</title>
+    <meta name="description" content="Secure login and registration for pxndas GTA account marketplace.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta property="og:title" content="pxndas - GTA Account Auth">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💎</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💎</text></svg>">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-dark);
+            background-image:
+                radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 100%, rgba(255, 0, 255, 0.06) 0%, transparent 60%);
+        }
+        .auth-container {
+            max-width: 420px;
+            width: 90%;
+            padding: 2.5rem;
+            background: var(--card-dark);
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink), var(--neon-blue));
+        }
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: var(--transition);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .auth-tab.active {
+            color: #000;
+            background: var(--neon-blue);
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+        }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; animation: fadeIn 0.3s ease-out; }
+        #matrix-canvas { opacity: 0.1; }
+        .btn-primary {
+            width: 100%;
+            padding: 0.9rem;
+            border-radius: 12px;
+            margin-top: 0.5rem;
+        }
+        .form-group input {
+            padding: 0.9rem 1rem;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <canvas id="matrix-canvas"></canvas>
+    
+    <div class="auth-container">
+        <div class="logo" style="text-align: center; margin-bottom: 2rem; font-size: 1.8rem;">pxndas<span>Auth</span></div>
+        
+        <div class="auth-tabs">
+            <div class="auth-tab active" data-target="login-form">Login</div>
+            <div class="auth-tab" data-target="signup-form">Sign Up</div>
+        </div>
+
+        <form id="login-form" class="auth-form active">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-user" required placeholder="Enter username...">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-pass" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary">Initialize Session</button>
+        </form>
+
+        <form id="signup-form" class="auth-form">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="signup-user" required placeholder="Choose a username...">
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="signup-email" required placeholder="email@nexus.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="signup-pass" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary">Create Identity</button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="index.html" class="read-more" style="margin-top: 0;">Return to Store</a>
+            <div style="margin-top: 1.2rem;">
+                <button onclick="Security.secureStore.clear(); location.reload();" style="background:none; border:none; color: rgba(255,255,255,0.2); cursor:pointer; font-size: 0.65rem; transition: color 0.2s; font-family: 'JetBrains Mono', monospace;" onmouseenter="this.style.color='rgba(255,255,255,0.5)'" onmouseleave="this.style.color='rgba(255,255,255,0.2)'">Clear Local Storage (Reset Nexus)</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="security.js"></script>
+    <script>
+        const loginLimiter = Security.createRateLimiter(5, 15 * 60 * 1000);
+
+        async function hashPassword(password) {
+            const msgUint8 = new TextEncoder().encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.target).classList.add('active');
+            });
+        });
+
+        // Signup Logic
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const rawUser = document.getElementById('signup-user').value.trim();
+            const rawEmail = document.getElementById('signup-email').value.trim();
+            const rawPass = document.getElementById('signup-pass').value;
+
+            const user = Security.sanitize(rawUser);
+            const email = Security.sanitize(rawEmail);
+
+            if (!Security.isValidUsername(user)) {
+                Security.toast.show('Username must be 3-20 characters (letters, numbers, underscores).', 'warning');
+                return;
+            }
+            if (!Security.isValidEmail(email)) {
+                Security.toast.show('Please enter a valid email address.', 'warning');
+                return;
+            }
+            const strength = Security.checkPasswordStrength(rawPass);
+            if (strength.strength === 'weak') {
+                Security.toast.show('Password too weak. Use uppercase, lowercase, digits, and special characters.', 'warning');
+                return;
+            }
+
+            const users = Security.secureStore.get('pxndas_users') || [];
+            if (users.find(u => u.username === user)) {
+                Security.auditLog('SIGNUP_DUPLICATE', { username: user });
+                Security.toast.show('Identity already exists in Nexus.', 'warning');
+                return;
+            }
+
+            const hashedPassword = await hashPassword(rawPass);
+            users.push({ username: user, email, pass: hashedPassword, role: 'user', created: Date.now() });
+            Security.secureStore.set('pxndas_users', users);
+            Security.auditLog('SIGNUP_SUCCESS', { username: user });
+            Security.toast.show('Identity secured. Please login.', 'success');
+            setTimeout(() => location.reload(), 1000);
+        });
+
+        // Login Logic
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const rawUser = document.getElementById('login-user').value.trim();
+            const rawPass = document.getElementById('login-pass').value;
+            const user = Security.sanitize(rawUser);
+
+            const rateCheck = loginLimiter.check(user);
+            if (!rateCheck.allowed) {
+                const waitMin = Math.ceil(rateCheck.waitMs / 60);
+                Security.auditLog('LOGIN_RATE_LIMITED', { username: user });
+                Security.toast.show(`Rate limit exceeded. Wait ${waitMin} minute(s).`, 'error');
+                return;
+            }
+
+            const inputHash = await hashPassword(rawPass);
+            const adminHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+
+            if (user === 'admin' && inputHash === adminHash) {
+                loginLimiter.reset(user);
+                Security.secureStore.set('pxndas_logged_in', { username: 'admin', role: 'admin', email: 'admin@pxndas.io', token: Security.generateToken(), expires: Date.now() + 3600000 });
+                Security.auditLog('LOGIN_SUCCESS', { username: user, role: 'admin' });
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const users = Security.secureStore.get('pxndas_users') || [];
+            const found = users.find(u => u.username === user && u.pass === inputHash);
+
+            if (found) {
+                loginLimiter.reset(user);
+                Security.secureStore.set('pxndas_logged_in', { username: found.username, email: found.email, role: found.role, token: Security.generateToken(), expires: Date.now() + 3600000 });
+                Security.auditLog('LOGIN_SUCCESS', { username: user, role: found.role });
+                window.location.href = 'index.html';
+            } else {
+                Security.auditLog('LOGIN_FAILED', { username: user, remaining: rateCheck.remaining });
+                Security.toast.show(`Authentication failed. ${rateCheck.remaining} attempt(s) remaining.`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

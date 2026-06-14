@@ -1,0 +1,511 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const session = Security.secureStore.get('pxndas_logged_in');
+    if (!session || session.role !== 'admin') return;
+
+    const toggle = document.getElementById('chat-toggle');
+    const panel = document.getElementById('chat-panel');
+    const closeBtn = document.getElementById('chat-close');
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send');
+    const messages = document.getElementById('chat-messages');
+    const headerLabel = document.getElementById('chat-header-label');
+    const titleSub = document.querySelector('.chat-title-sub');
+    const API_PROXY = '/api/chat';
+
+    if (!toggle || !panel) return;
+
+    let history = [];
+    let processingTool = false;
+
+    // --- Tool system ---
+    const storeData = () => {
+        const users = Security.secureStore.get('pxndas_users') || [];
+        const requests = Security.secureStore.get('service_requests') || [];
+        const accounts = Security.secureStore.get('store_accounts') || [];
+        const posts = Security.secureStore.get('nexus_posts') || [];
+        const paid = requests.filter(r => r.status === 'PAID');
+        const revenue = paid.reduce((s, r) => s + parseFloat((r.total || '').replace('$', '') || 0), 0);
+        const audit = Security.secureStore.get('pxndas_audit_log') || [];
+        const tickets = Security.secureStore.get('support_tickets') || [];
+        return { users, requests, paid, revenue, accounts, posts, audit, tickets };
+    };
+
+    const tools = {
+        add_account: {
+            desc: 'Add a new GTA account listing to the store.',
+            args: {
+                title: 'string (required) — listing title',
+                price: 'number (required) — price in USD',
+                category: 'string (required) — e.g. Modded, Money, Rank, Recovery, Bundles, Other',
+                description: 'string (optional) — account details (stats, unlocks, delivery method)'
+            },
+            execute: args => {
+                if (!args.title || !args.price) return { error: 'title and price are required' };
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                const newAccount = {
+                    id: Date.now(),
+                    title: args.title,
+                    price: args.price,
+                    category: args.category || 'other',
+                    description: args.description || '',
+                    image: '',
+                    date: new Date().toISOString().split('T')[0]
+                };
+                accounts.push(newAccount);
+                Security.secureStore.set('store_accounts', accounts);
+                Security.auditLog('AI_ADD_ACCOUNT', { title: args.title, price: args.price });
+                return { success: true, message: `Added "${args.title}" for $${args.price}`, id: newAccount.id };
+            }
+        },
+        edit_account: {
+            desc: 'Edit an existing GTA account listing by ID.',
+            args: {
+                id: 'number (required) — account ID to edit',
+                title: 'string (optional) — new title',
+                price: 'number (optional) — new price',
+                category: 'string (optional) — new category',
+                description: 'string (optional) — new description'
+            },
+            execute: args => {
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                const idx = accounts.findIndex(a => a.id === args.id || a.id == args.id);
+                if (idx === -1) return { error: `Account with id ${args.id} not found` };
+                if (args.title !== undefined) accounts[idx].title = args.title;
+                if (args.price !== undefined) accounts[idx].price = args.price;
+                if (args.category !== undefined) accounts[idx].category = args.category;
+                if (args.description !== undefined) accounts[idx].description = args.description;
+                Security.secureStore.set('store_accounts', accounts);
+                Security.auditLog('AI_EDIT_ACCOUNT', { id: args.id });
+                return { success: true, message: `Updated account #${args.id}` };
+            }
+        },
+        delete_account: {
+            desc: 'Delete a GTA account listing by ID.',
+            args: { id: 'number (required) — account ID to delete' },
+            confirm: true,
+            execute: args => {
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                const idx = accounts.findIndex(a => a.id === args.id || a.id == args.id);
+                if (idx === -1) return { error: `Account with id ${args.id} not found` };
+                const removed = accounts.splice(idx, 1)[0];
+                Security.secureStore.set('store_accounts', accounts);
+                Security.auditLog('AI_DELETE_ACCOUNT', { id: args.id, title: removed.title });
+                return { success: true, message: `Deleted "${removed.title}" (#${args.id})` };
+            }
+        },
+        list_accounts: {
+            desc: 'Get a detailed list of all GTA account listings with IDs, prices, and categories.',
+            args: {},
+            execute: () => {
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                if (!accounts.length) return { success: true, message: 'No listings yet.' };
+                const lines = accounts.map(a => `#${a.id} — ${a.title} ($${a.price}) [${a.category}]`);
+                return { success: true, message: lines.join('\n') };
+            }
+        },
+        add_post: {
+            desc: 'Add a post to the Nexus feed (announcements/news).',
+            args: {
+                title: 'string (required) — post title',
+                content: 'string (required) — post content/body'
+            },
+            execute: args => {
+                if (!args.title || !args.content) return { error: 'title and content are required' };
+                const posts = Security.secureStore.get('nexus_posts') || [];
+                posts.push({
+                    id: Date.now(),
+                    title: args.title,
+                    content: args.content,
+                    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                });
+                Security.secureStore.set('nexus_posts', posts);
+                Security.auditLog('AI_ADD_POST', { title: args.title });
+                return { success: true, message: `Posted "${args.title}" to Nexus feed` };
+            }
+        },
+        delete_post: {
+            desc: 'Delete a Nexus feed post by ID.',
+            args: { id: 'number (required) — post ID to delete' },
+            confirm: true,
+            execute: args => {
+                const posts = Security.secureStore.get('nexus_posts') || [];
+                const idx = posts.findIndex(p => p.id === args.id || p.id == args.id);
+                if (idx === -1) return { error: `Post with id ${args.id} not found` };
+                const removed = posts.splice(idx, 1)[0];
+                Security.secureStore.set('nexus_posts', posts);
+                Security.auditLog('AI_DELETE_POST', { id: args.id, title: removed.title });
+                return { success: true, message: `Deleted post "${removed.title}"` };
+            }
+        },
+        view_orders: {
+            desc: 'View all orders with details (status, total, items, date).',
+            args: { status: 'string (optional) — filter by status: PAID, PENDING, or all' },
+            execute: args => {
+                const requests = Security.secureStore.get('service_requests') || [];
+                let filtered = requests;
+                if (args.status && args.status.toUpperCase() !== 'ALL') {
+                    filtered = requests.filter(r => r.status === args.status.toUpperCase());
+                }
+                if (!filtered.length) return { success: true, message: 'No orders found.' };
+                const lines = filtered.map(r => {
+                    const date = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : 'N/A';
+                    return `#${r.id || '?'} — $${r.total || '0'} — ${r.status || '?'} — ${r.items || 0} items — ${date}`;
+                });
+                return { success: true, message: lines.join('\n') };
+            }
+        },
+        view_users: {
+            desc: 'View all registered users with usernames and join dates.',
+            args: {},
+            execute: () => {
+                const users = Security.secureStore.get('pxndas_users') || [];
+                if (!users.length) return { success: true, message: 'No users yet.' };
+                const lines = users.map(u => `${u.username} (${u.role || 'user'}) — joined ${new Date(u.created).toLocaleDateString()}`);
+                return { success: true, message: lines.join('\n') };
+            }
+        },
+        update_setting: {
+            desc: 'Update a site configuration setting.',
+            args: {
+                key: 'string (required) — setting name: payment_mode, idle_timeout',
+                value: 'string (required) — new value (for payment_mode: "test" or "live", for idle_timeout: number in minutes)'
+            },
+            execute: args => {
+                if (args.key === 'payment_mode') {
+                    if (!['test', 'live'].includes(args.value)) return { error: 'payment_mode must be "test" or "live"' };
+                    try {
+                        const cfg = Security.secureStore.get('pxndas_config') || {};
+                        cfg.PAYMENT_MODE = args.value;
+                        Security.secureStore.set('pxndas_config', cfg);
+                    } catch {}
+                    Security.auditLog('AI_SET_PAYMENT_MODE', { value: args.value });
+                    return { success: true, message: `Payment mode set to "${args.value}"` };
+                }
+                if (args.key === 'idle_timeout') {
+                    const mins = parseInt(args.value);
+                    if (isNaN(mins) || mins < 1) return { error: 'idle_timeout must be a positive number (minutes)' };
+                    try {
+                        const cfg = Security.secureStore.get('pxndas_config') || {};
+                        cfg.IDLE_TIMEOUT = mins;
+                        Security.secureStore.set('pxndas_config', cfg);
+                    } catch {}
+                    Security.auditLog('AI_SET_IDLE_TIMEOUT', { value: mins });
+                    return { success: true, message: `Idle timeout set to ${mins} minutes` };
+                }
+                return { error: `Unknown setting "${args.key}". Available: payment_mode, idle_timeout` };
+            }
+        },
+        clear_orders: {
+            desc: 'Delete all completed (PAID) orders.',
+            args: {},
+            confirm: true,
+            execute: () => {
+                const requests = Security.secureStore.get('service_requests') || [];
+                const remaining = requests.filter(r => r.status !== 'PAID');
+                const count = requests.length - remaining.length;
+                Security.secureStore.set('service_requests', remaining);
+                Security.auditLog('AI_CLEAR_ORDERS', { count });
+                return { success: true, message: `Cleared ${count} completed order(s)` };
+            }
+        },
+        clear_audit: {
+            desc: 'Delete the entire audit log.',
+            args: {},
+            confirm: true,
+            execute: () => {
+                Security.secureStore.remove('pxndas_audit_log');
+                Security.auditLog('AI_CLEAR_AUDIT', {});
+                return { success: true, message: 'Audit log cleared' };
+            }
+        }
+    };
+
+    // --- Parse tool calls from AI response ---
+    const parseToolCalls = (text) => {
+        const calls = [];
+        const regex = /\{tool:(\w+)\}([\s\S]*?)\{\/tool\}/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const name = match[1];
+            let args = {};
+            try { args = JSON.parse(match[2].trim()); } catch {}
+            calls.push({ name, args });
+        }
+        return calls;
+    };
+
+    // --- Execute a tool call ---
+    const execTool = async (call) => {
+        const tool = tools[call.name];
+        if (!tool) return `Unknown tool "${call.name}"`;
+
+        if (tool.confirm) {
+            const confirmed = await new Promise(resolve => {
+                const div = document.createElement('div');
+                div.className = 'chat-msg bot confirm';
+                div.innerHTML = `<div class="msg-avatar">⚠️</div><div class="msg-content confirm"><p>Allow <strong>${call.name}</strong>?</p><div class="confirm-btns"><button class="confirm-yes">Yes</button><button class="confirm-no">No</button></div></div>`;
+                messages.appendChild(div);
+                messages.scrollTop = messages.scrollHeight;
+                div.querySelector('.confirm-yes').onclick = () => { div.remove(); resolve(true); };
+                div.querySelector('.confirm-no').onclick = () => { div.remove(); resolve(false); };
+            });
+            if (!confirmed) return 'Cancelled.';
+        }
+
+        const result = tool.execute(call.args);
+        if (result.error) return `Error: ${result.error}`;
+        Security.toast.show(result.message, 'success');
+        return `✅ ${result.message}`;
+    };
+
+    // --- Append a message to the chat ---
+    const appendMessage = (text, sender = 'bot') => {
+        const div = document.createElement('div');
+        div.className = 'chat-msg ' + sender;
+
+        if (sender === 'bot') {
+            div.innerHTML = `<div class="msg-avatar">🐼</div><div class="msg-content"><strong>Pxnda AI</strong><div class="msg-text">${text}</div></div>`;
+        } else if (sender === 'system') {
+            div.innerHTML = `<div class="msg-content system">${text}</div>`;
+        } else {
+            div.innerHTML = `<div class="msg-content user"><p>${Security.sanitize(text)}</p></div>`;
+        }
+
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+
+        if (sender === 'user') {
+            history.push({ role: 'user', content: text });
+        } else if (sender === 'bot') {
+            history.push({ role: 'assistant', content: text.replace(/<[^>]*>/g, '') });
+        }
+        if (history.length > 20) history.splice(0, history.length - 20);
+    };
+
+    const showTyping = () => {
+        const div = document.createElement('div');
+        div.className = 'chat-msg bot typing';
+        div.id = 'typing-indicator';
+        div.innerHTML = `<div class="msg-avatar">🐼</div><div class="msg-content"><strong>Pxnda AI</strong><div class="typing-dots"><span>.</span><span>.</span><span>.</span></div></div>`;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    const removeTyping = () => {
+        const el = document.getElementById('typing-indicator');
+        if (el) el.remove();
+    };
+
+    // --- Build system prompt with tools ---
+    const buildPrompt = () => {
+        const data = storeData();
+        const toolDescs = Object.entries(tools).map(([name, t]) => {
+            const args = Object.entries(t.args).map(([k, v]) => `  - ${k}: ${v}`).join('\n');
+            return `${name}: ${t.desc}${t.confirm ? ' [REQUIRES CONFIRMATION]' : ''}\nArgs:\n${args}`;
+        }).join('\n\n');
+
+        return `You are Pxnda AI, the AI assistant for pxndas — a GTA V / GTA Online account marketplace. You have full access to live store data and can make changes using the tool system.
+
+## Current Store State
+- Registered users: ${data.users.length}
+- Total orders: ${data.requests.length} (${data.paid.length} paid)
+- Total revenue: $${data.revenue.toFixed(2)}
+- GTA account listings: ${data.accounts.length}
+- Nexus feed posts: ${data.posts.length}
+- Support tickets: ${data.tickets.length}
+- Payment mode: ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}
+
+## Available Tools
+You can perform actions by including a tool call block in your response. The block will be detected and executed automatically.
+
+Format:
+\`\`\`
+{tool:tool_name}{"arg1":"value1","arg2":"value2"}{/tool}
+\`\`\`
+
+${toolDescs}
+
+## IMPORTANT RULES
+1. When the admin asks you to DO something (add/edit/delete/change), include the appropriate tool block in your response.
+2. Always explain what you're doing before the tool block.
+3. If admin asks to see data (listings, orders, users), use the appropriate tool or summarize from context.
+4. Destructive actions (delete, clear) require confirmation — just include the tool block and the system will prompt.
+5. Be concise but helpful.
+6. If admin asks to do something you can't do, explain what's possible.
+7. After a tool executes, the system will show the result. You can continue the conversation.
+
+## Example
+Admin: "Add a modded money account for $89"
+You: Adding a Modded Money Account with $500M+ cash for $89.
+{tool:add_account}{"title":"Modded Money Account","price":89,"category":"Modded","description":"$500M+ modded cash, all properties, full recovery access"}{/tool}
+
+Admin: "Show me my orders"
+You: Here are your orders:
+{tool:view_orders}{}{/tool}`;
+    };
+
+    // --- Local fallback ---
+    const localResponse = (query) => {
+        const q = query.toLowerCase().trim();
+        const data = storeData();
+
+        if (/^(users?|customers?|members?)\b/.test(q)) {
+            const count = data.users.length;
+            const admins = data.users.filter(u => u.role === 'admin').length;
+            const latest = data.users[data.users.length - 1];
+            let reply = `📊 **${count}** registered user${count !== 1 ? 's' : ''} (${admins} admin${admins !== 1 ? 's' : ''})`;
+            if (latest) reply += `\n\nLatest: **${Security.sanitize(latest.username)}** (${new Date(latest.created).toLocaleDateString()})`;
+            return reply;
+        }
+        if (/^(revenue|earnings?|income|sales|money)\b/.test(q)) {
+            return `💰 **Revenue:** $${data.revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\nFrom ${data.paid.length} completed order${data.paid.length !== 1 ? 's' : ''}`;
+        }
+        if (/^(orders?|purchases?)\b/.test(q)) {
+            const pending = data.requests.length - data.paid.length;
+            return `📦 **Orders:** ${data.requests.length} total\n• ${data.paid.length} paid\n• ${pending} pending`;
+        }
+        if (/^(listings?|accounts?|products?|store|gta)\b/.test(q)) {
+            if (!data.accounts.length) return `🛒 **GTA Store:** No accounts listed yet.`;
+            let reply = `🛒 **${data.accounts.length} GTA account${data.accounts.length !== 1 ? 's' : ''}:**\n`;
+            data.accounts.forEach((a, i) => { reply += `\n${i + 1}. **${Security.sanitize(a.title)}** — $${a.price} (${a.category})`; });
+            return reply;
+        }
+        if (/^(feed|posts?|nexus)\b/.test(q)) {
+            if (!data.posts.length) return `📡 **Nexus Feed:** No posts yet.`;
+            let reply = `📡 **${data.posts.length} post${data.posts.length !== 1 ? 's' : ''}:**\n`;
+            data.posts.slice(0, 5).forEach((p, i) => { reply += `\n${i + 1}. **${Security.sanitize(p.title)}** (${p.date})`; });
+            return reply;
+        }
+        if (/^(audit|logs?|activity)\b/.test(q)) {
+            if (!data.audit.length) return `📋 **No recent activity.**`;
+            let reply = `📋 **Last ${Math.min(5, data.audit.length)}:**\n`;
+            data.audit.slice(0, 5).forEach(e => { reply += `\n• ${Security.sanitize(e.event)} — ${new Date(e.timestamp).toLocaleString()}`; });
+            return reply;
+        }
+        if (/^(help|commands|what can you)\b/.test(q)) return `🤖 **Commands:** users, revenue, orders, listings, feed, audit, status — or add an API key in Settings for full AI control.`;
+        if (/^(status|version)\b/.test(q)) return `🟢 **Online** · v5.0 · ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}\nUsers: ${data.users.length} · Orders: ${data.requests.length} · Revenue: $${data.revenue.toFixed(2)}`;
+        if (/\b(clear|reset|delete)\b/.test(q)) return `⚠️ Go to **Settings > Data Management** to clear data, or add an API key for AI-powered management.`;
+        if (/\b(hi|hello|hey|sup)\b/.test(q)) return `👋 Hey admin. ${data.requests.length} orders, $${data.revenue.toFixed(2)} revenue. What's up?`;
+        if (/\b(thanks?|ty)\b/.test(q)) return `👍 Anytime.`;
+
+        for (const [word, val] of Object.entries({ 'user': data.users.length, 'order': data.requests.length, 'paid': data.paid.length, 'revenue': `$${data.revenue.toFixed(2)}`, 'listing': data.accounts.length, 'product': data.accounts.length, 'post': data.posts.length })) {
+            if (q.includes(word)) return `📊 That relates to **${val}** in the current data.`;
+        }
+        return `🤔 Add an API key in **Settings** for full AI control, or try: users, revenue, orders, listings, audit, status.`;
+    };
+
+    // --- Proxy AI call ---
+    const callProxyAI = async (query) => {
+        const apiKey = localStorage.getItem('pxndas_ai_key');
+        const model = localStorage.getItem('pxndas_ai_model') || 'gemini-2.0-flash-001';
+        const provider = localStorage.getItem('pxndas_ai_provider') || 'gemini';
+
+        const context = buildPrompt();
+        const msgs = [
+            { role: 'system', content: context },
+            ...history.map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: query }
+        ];
+
+        const res = await fetch(API_PROXY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, apiKey, model, query, context, history: msgs })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Proxy error');
+        return json.reply;
+    };
+
+    // --- Update header ---
+    const updateHeaderMode = () => {
+        if (!headerLabel) return;
+        const key = localStorage.getItem('pxndas_ai_key');
+        const model = localStorage.getItem('pxndas_ai_model') || '';
+        const short = model.split('/').pop() || model;
+        if (key) {
+            headerLabel.textContent = short.toUpperCase();
+            headerLabel.style.cssText = 'color:var(--secondary);border-color:rgba(0,255,255,0.2);background:rgba(0,255,255,0.1)';
+            if (titleSub) titleSub.textContent = model;
+        } else {
+            headerLabel.textContent = 'LOCAL';
+            headerLabel.style.cssText = 'color:var(--neon-yellow);border-color:rgba(255,200,0,0.2);background:rgba(255,200,0,0.08)';
+            if (titleSub) titleSub.textContent = 'offline mode';
+        }
+    };
+    window.updateChatHeader = updateHeaderMode;
+    updateHeaderMode();
+
+    // --- Toggle ---
+    toggle.addEventListener('click', () => {
+        panel.classList.toggle('open');
+        if (panel.classList.contains('open')) input.focus();
+    });
+    closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+    // --- Handle send ---
+    const handleSend = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        if (processingTool) return;
+
+        appendMessage(text, 'user');
+        input.value = '';
+        showTyping();
+        processingTool = true;
+
+        const apiKey = localStorage.getItem('pxndas_ai_key');
+
+        if (apiKey) {
+            try {
+                const response = await callProxyAI(text);
+                removeTyping();
+
+                // Check for tool calls in the response
+                const toolCalls = parseToolCalls(response);
+                const cleanText = response.replace(/\{tool:\w+\}[\s\S]*?\{\/tool\}/g, '').trim();
+
+                if (cleanText) {
+                    appendMessage(formatAIResponse(cleanText));
+                }
+
+                // Execute each tool call
+                for (const call of toolCalls) {
+                    const result = await execTool(call);
+                    appendMessage(`⚙️ **${call.name}** → ${result}`, 'system');
+                }
+
+                if (!toolCalls.length && !cleanText) {
+                    appendMessage(formatAIResponse(response));
+                }
+
+                processingTool = false;
+                return;
+            } catch (e) {
+                removeTyping();
+                appendMessage(`⚠️ API error: ${e.message}. Falling back to local mode...`);
+                // fall through to local
+            }
+        }
+
+        await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
+        removeTyping();
+        appendMessage(localResponse(text));
+        processingTool = false;
+    };
+
+    // --- Format AI markdown response ---
+    const formatAIResponse = (text) => {
+        let safe = Security.sanitize(text);
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+        safe = safe.replace(/\n/g, '<br>');
+        return safe;
+    };
+
+    sendBtn.addEventListener('click', handleSend);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSend();
+    });
+});

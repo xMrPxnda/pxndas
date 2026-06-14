@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pxndas | GTA Accounts</title>
+    <meta name="description" content="Premium GTA V accounts — modded, money drops, rank unlocks, recovery services and more.">
+    <meta name="keywords" content="GTA accounts, modded GTA, GTA Online, money drops, rank unlock, recovery, gaming marketplace">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="pxndas - GTA Account Marketplace">
+    <meta property="og:description" content="Premium GTA V accounts with modded money, max rank, rare unlocks and full recovery services.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pxndas.io">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="pxndas - GTA Account Marketplace">
+    <meta name="twitter:description" content="Premium GTA V accounts — modded, money drops, rank unlocks, recovery.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💎</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💎</text></svg>">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.paypal.com https://www.paypalobjects.com https://fonts.googleapis.com https://fonts.gstatic.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://www.paypal.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; frame-src https://www.paypal.com;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+</head>
+<body class="dark-theme">
+    <div id="gear-clock-container">
+        <div class="gear g1"></div>
+        <div class="gear g2"></div>
+        <div class="gear g3"></div>
+        <div class="clock-face">
+            <div class="digital-time" id="clock-time">00:00:00</div>
+            <div class="date-display" id="clock-date">JUNE 14, 2026</div>
+        </div>
+    </div>
+    <canvas id="matrix-canvas"></canvas>
+
+    <!-- Support Floating Button -->
+    <div id="support-btn" title="Live Support" role="button" tabindex="0" aria-label="Open live support">
+        <div class="support-icon">💬</div>
+    </div>
+
+    <!-- Live Chat Panel -->
+    <div id="live-chat-panel">
+        <div id="live-chat-header">
+            <div class="live-chat-status"></div>
+            <div class="live-chat-title">
+                <span class="live-chat-title-name">Pxnda Live Support</span>
+                <span class="live-chat-title-sub">typically replies in minutes</span>
+            </div>
+            <button id="live-chat-close">&times;</button>
+        </div>
+        <div id="live-chat-messages">
+            <div class="live-chat-msg system">
+                <p>Welcome! Ask us anything about GTA accounts, orders, or delivery.</p>
+            </div>
+        </div>
+        <div id="live-chat-input-area">
+            <input type="text" id="live-chat-input" placeholder="Type a message..." autocomplete="off">
+            <button id="live-chat-send">Send</button>
+        </div>
+        <div id="live-chat-login-prompt" style="display:none;position:absolute;inset:0;background:rgba(10,10,25,0.95);backdrop-filter:blur(8px);flex-direction:column;align-items:center;justify-content:center;gap:1rem;z-index:5;border-radius:20px;text-align:center;padding:2rem;">
+            <p style="color:var(--text-muted);font-size:0.9rem;">Log in to use live support</p>
+            <a href="auth.html" class="btn btn-primary" style="padding:0.7rem 2rem;font-size:0.85rem;">Login / Sign Up</a>
+        </div>
+    </div>
+
+    <header>
+        <nav>
+            <div class="logo">pxndas<span>Store</span></div>
+            <div class="search-container">
+                <input type="text" id="productSearch" placeholder="Search products...">
+            </div>
+            <ul class="nav-links">
+                <li><a href="#hero">Explore</a></li>
+                <li><a href="#products">Trending</a></li>
+                <li><a href="#nexus-feed">Nexus Feed</a></li>
+                <li id="admin-nav-link" style="display: none;"><a href="admin.html" style="color: var(--neon-pink);">Admin</a></li>
+                <li id="auth-nav"><a href="auth.html" class="btn-action">Login</a></li>
+                <li><button id="theme-toggle" aria-label="Toggle dark mode">🌓</button></li>
+            </ul>
+            <div class="cart-wrapper">
+                <div class="cart-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span id="cart-count">0</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="hero-content">
+                <span class="badge">GTA Edition 2026</span>
+                <h1>Premium <span>GTA</span> Accounts</h1>
+                <p>Modded money, max rank, rare unlocks & full recovery. Secure delivery, instant access, lifetime warranty.</p>
+                <div class="hero-buttons">
+                    <a href="#products" class="btn btn-primary">Browse Accounts</a>
+                    <a href="#products" class="btn btn-secondary">View All</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="floating-card c1">💰</div>
+                <div class="floating-card c2">🏎️</div>
+                <div class="floating-card c3">⭐</div>
+            </div>
+        </section>
+
+        <section id="products">
+            <div class="section-header">
+                <h2>Featured Accounts</h2>
+                <p class="transparent-text">ACCESSING ACCOUNT DATABASE... STATUS: READY</p>
+                <div class="filters">
+                    <button class="filter-btn active" data-category="all">All</button>
+                    <button class="filter-btn" data-category="modded">Modded</button>
+                    <button class="filter-btn" data-category="money">Money</button>
+                    <button class="filter-btn" data-category="rank">Rank</button>
+                    <button class="filter-btn" data-category="recovery">Recovery</button>
+                    <button class="filter-btn" data-category="bundles">Bundles</button>
+                </div>
+            </div>
+
+            <div class="product-grid" id="productGrid">
+                <!-- Test Product $0.01 -->
+                <div class="product-card" data-category="modded">
+                    <span class="product-status" style="background:var(--neon-blue);box-shadow:0 0 10px var(--neon-blue);">Test</span>
+                    <div class="card-image">🧪</div>
+                    <div class="card-body">
+                        <span class="category-tag">Test</span>
+                        <h3>Test GTA Account</h3>
+                        <p>Use this to test live payment flow. You will be charged exactly $0.01. Instant delivery.</p>
+                        <div class="card-footer">
+                            <span class="price">$0.01</span>
+                            <button class="add-to-cart">Test Checkout</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Product 1 -->
+                <div class="product-card" data-category="modded">
+                    <span class="product-status">Top Seller</span>
+                    <div class="card-image">💵</div>
+                    <div class="card-body">
+                        <span class="category-tag">Modded</span>
+                        <h3>Modded Money Account</h3>
+                        <p>$500M+ modded cash, modded RP, all properties unlocked. Full modded account with secure email and recoverable access.</p>
+                        <div class="card-footer">
+                            <span class="price">$89.00</span>
+                            <button class="add-to-cart">Buy Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-category="money">
+                    <span class="product-status">New</span>
+                    <div class="card-image">💰</div>
+                    <div class="card-body">
+                        <span class="category-tag">Money</span>
+                        <h3>Money Drop Package</h3>
+                        <p>$100M lobby money drop. Full bunker, nightclub, arcade setup. No mods needed on your end — instant transfer.</p>
+                        <div class="card-footer">
+                            <span class="price">$24.00</span>
+                            <button class="add-to-cart">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-category="rank">
+                    <span class="product-status">Premium</span>
+                    <div class="card-image">⭐</div>
+                    <div class="card-body">
+                        <span class="category-tag">Rank</span>
+                        <h3>Max Rank Unlock</h3>
+                        <p>Rank 1000+ account with all awards, trophies, and career progress maxed. Unlocks every vehicle, weapon, and property.</p>
+                        <div class="card-footer">
+                            <span class="price">$55.00</span>
+                            <button class="add-to-cart">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-category="recovery">
+                    <span class="product-status">Hot</span>
+                    <div class="card-image">🛡️</div>
+                    <div class="card-body">
+                        <span class="category-tag">Recovery</span>
+                        <h3>Full Account Recovery</h3>
+                        <p>Complete account recovery service. Transfer your progress or recover a lost account. Full email access, social club reset, secured.</p>
+                        <div class="card-footer">
+                            <span class="price">$39.00</span>
+                            <button class="add-to-cart">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-category="bundles">
+                    <span class="product-status">Limited</span>
+                    <div class="card-image">🏎️</div>
+                    <div class="card-body">
+                        <span class="category-tag">Bundles</span>
+                        <h3>Ultimate Bundle</h3>
+                        <p>Money + Rank + All unlocks + Rare vehicles. Maxed out account with $1B, rank 1000+, all businesses, all vehicles, and more.</p>
+                        <div class="card-footer">
+                            <span class="price">$149.00</span>
+                            <button class="add-to-cart">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card" data-category="modded">
+                    <span class="product-status">Rare</span>
+                    <div class="card-image">👑</div>
+                    <div class="card-body">
+                        <span class="category-tag">Modded</span>
+                        <h3>Rare Unlock Account</h3>
+                        <p>All limited-time vehicles, removed clothing, rare liveries, and event-exclusive items. Christmas 2023-2026 items included.</p>
+                        <div class="card-footer">
+                            <span class="price">$79.00</span>
+                            <button class="add-to-cart">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="nexus-feed">
+            <div class="section-header">
+                <h2>Nexus Intel Feed</h2>
+                <p class="transparent-text">DECRYPTING UNDERGROUND BROADCASTS... STATUS: ONLINE</p>
+            </div>
+            <div class="posts-grid" id="postsGrid">
+                <!-- Posts will be injected by script.js -->
+            </div>
+        </section>
+    </main>
+
+    <!-- User Dashboard Modal -->
+    <div id="userDashboardModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-modal" id="closeDashboard">&times;</span>
+            <h2 id="dashboardTitle">User Dashboard</h2>
+            <div class="dashboard-grid" style="margin-top: 2rem;">
+                <div class="dashboard-section">
+                    <h3>My Service Requests</h3>
+                    <div id="userRequestsList">
+                        <!-- User specific requests here -->
+                    </div>
+                </div>
+                <div class="dashboard-section" style="margin-top:2rem;">
+                    <h3>My Support Tickets</h3>
+                    <div id="user-tickets-list">
+                        <!-- User tickets will show here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content checkout-content">
+            <span class="close-modal" id="closeCheckout">&times;</span>
+            <h2>Secure Checkout</h2>
+            <div class="checkout-grid">
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div id="cartItemsList">
+                        <!-- Items will appear here -->
+                    </div>
+                    <div class="total-row">
+                        <span>Total</span>
+                        <span id="cartTotal">$0.00</span>
+                    </div>
+                </div>
+                    <div class="payment-methods">
+                        <h3>Payment Method</h3>
+                        <div id="payment-mode-badge" style="text-align:center;margin-bottom:1rem;font-size:0.7rem;font-family:'JetBrains Mono',monospace;letter-spacing:1px;color:var(--neon-yellow);">PAYMENT MODE: TEST</div>
+                        <div class="payment-options">
+                            <div id="paypal-button-container"></div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content success-content">
+            <div class="success-icon">✔️</div>
+            <h2>Payment Successful!</h2>
+            <p>Your digital assets are being prepared for delivery.</p>
+            <p>Order ID: <span id="orderIdDisplay">#---</span></p>
+            <button class="btn btn-primary" id="closeSuccess">Continue Shopping</button>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-info">
+                <div class="logo">pxndas<span>Store</span></div>
+                <p>The #1 marketplace for premium GTA V accounts and recovery services.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Accounts</h4>
+                <ul>
+                    <li><a href="#">Modded Accounts</a></li>
+                    <li><a href="#">Money Drops</a></li>
+                    <li><a href="#">Rank Unlocks</a></li>
+                </ul>
+            </div>
+            <div class="footer-links">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="#">Help Center</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 pxndas GTA Store. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="security.js"></script>
+    <!-- Support Chatbot -->
+    <div id="support-chat-toggle" title="Support AI">
+        <span>🎧</span>
+    </div>
+    <div id="support-chat-panel">
+        <div id="support-chat-header">
+            <div class="support-status-dot"></div>
+            <div class="support-title-group">
+                <span class="support-title-name">Pxnda Support</span>
+                <span class="support-title-sub">customer care</span>
+            </div>
+            <span id="support-chat-header-label">AI</span>
+            <button id="support-chat-close">&times;</button>
+        </div>
+        <div id="support-chat-messages">
+            <div class="support-msg bot">
+                <div class="support-msg-avatar">🎧</div>
+                <div class="support-msg-content">
+                    <strong>Pxnda Support</strong>
+                    <p>Hey there! 🐼 Ask me anything about our GTA accounts — pricing, delivery, modded stats, or how it all works.</p>
+                </div>
+            </div>
+        </div>
+        <div id="support-chat-input-area">
+            <input type="text" id="support-chat-input" placeholder="Ask about GTA accounts..." autocomplete="off">
+            <button id="support-chat-send">Send</button>
+        </div>
+    </div>
+
+    <script src="support-chatbot.js?v=2"></script>
+    <script src="script.js?v=6"></script>
+</body>
+</html>
