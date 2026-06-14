@@ -101,11 +101,14 @@ const Security = (() => {
         } catch {}
     };
 
-    // Secure localStorage wrapper with server API
+    // Secure localStorage wrapper with server API + client-side backup
+    const BAK_PREFIX = '__bak_';
     const secureStore = {
         set(key, value) {
             if (isServerMode() && !localKeys.has(key)) {
                 serverSet(key, value);
+                // Keep a backup copy in localStorage so data survives server resets
+                localStorage.setItem(BAK_PREFIX + key, encode(value));
                 return;
             }
             localStorage.setItem(key, encode(value));
@@ -113,7 +116,21 @@ const Security = (() => {
         get(key) {
             if (isServerMode() && !localKeys.has(key)) {
                 migrateIfNeeded(key);
-                return serverGet(key);
+                const serverVal = serverGet(key);
+                // If server returned empty (null or empty array), try restoring from backup
+                if (serverVal === null || serverVal === undefined || (Array.isArray(serverVal) && !serverVal.length)) {
+                    const bak = localStorage.getItem(BAK_PREFIX + key);
+                    if (bak) {
+                        try {
+                            const decoded = decode(bak);
+                            if (decoded !== null && decoded !== undefined) {
+                                serverSet(key, decoded);
+                                return decoded;
+                            }
+                        } catch {}
+                    }
+                }
+                return serverVal;
             }
             const raw = localStorage.getItem(key);
             if (!raw) return null;
@@ -122,6 +139,7 @@ const Security = (() => {
         remove(key) {
             if (isServerMode() && !localKeys.has(key)) {
                 serverSet(key, null);
+                localStorage.removeItem(BAK_PREFIX + key);
                 return;
             }
             localStorage.removeItem(key);
@@ -129,12 +147,15 @@ const Security = (() => {
         clear() {
             if (isServerMode()) {
                 const shared = ['pxndas_users', 'service_requests', 'store_accounts', 'pxnda_posts', 'support_tickets', 'live_chat_messages'];
-                shared.forEach(k => serverSet(k, null));
+                shared.forEach(k => {
+                    serverSet(k, null);
+                    localStorage.removeItem(BAK_PREFIX + k);
+                });
             }
             const safe = ['theme', 'pxndas_ai_key', 'pxndas_ai_model', 'pxndas_ai_provider'];
             const keep = new Set(safe);
             Object.keys(localStorage).forEach(k => {
-                if (!keep.has(k)) localStorage.removeItem(k);
+                if (!keep.has(k) && !k.startsWith(BAK_PREFIX)) localStorage.removeItem(k);
             });
         }
     };
