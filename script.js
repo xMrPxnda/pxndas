@@ -414,46 +414,29 @@ document.addEventListener('DOMContentLoaded', () => {
         pdQty = 1;
 
         const images = (acc.images && acc.images.length ? acc.images : (acc.image ? [acc.image] : []));
-        const pdHero = document.getElementById('pdHero');
         const heroBg = document.getElementById('pdHeroBg');
-        let activeGalleryIdx = 0;
-
-        const setHeroImage = (idx) => {
-            activeGalleryIdx = idx;
-            if (!images.length) {
-                heroBg.style.backgroundImage = '';
-                heroBg.classList.remove('has-image');
-                heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
-                return;
-            }
-            heroBg.style.backgroundImage = `url('${Security.sanitize(images[idx])}')`;
-            heroBg.classList.add('has-image');
-            heroBg.innerHTML = '';
-            // Update active thumbnail highlight
-            document.querySelectorAll('.pd-gallery-thumb').forEach((t, i) => {
-                t.classList.toggle('active', i === idx);
-            });
-        };
-
         heroBg.innerHTML = '';
         if (!images.length) {
+            heroBg.style.backgroundImage = '';
+            heroBg.classList.remove('has-image');
             heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
+        } else {
+            heroBg.style.backgroundImage = `url('${Security.sanitize(images[0])}')`;
+            heroBg.classList.add('has-image');
         }
-        // Build gallery strip
+        // Extra images gallery below purchase card
+        const extraImages = images.length > 1 ? images.slice(1) : [];
         const strip = document.getElementById('pdGalleryStrip');
-        strip.innerHTML = images.map((img, idx) =>
-            `<div class="pd-gallery-thumb${idx === 0 ? ' active' : ''}" data-idx="${idx}">
-                <img src="${Security.sanitize(img)}" alt="Photo ${idx+1}" loading="lazy">
-                <span class="pd-thumb-idx">${idx+1}</span>
-            </div>`
-        ).join('');
-        strip.querySelectorAll('.pd-gallery-thumb').forEach(el => {
-            el.addEventListener('click', () => {
-                const idx = parseInt(el.dataset.idx);
-                setHeroImage(idx);
-            });
-        });
-        setHeroImage(0);
+        if (extraImages.length) {
+            strip.innerHTML = extraImages.map((img) =>
+                `<div class="pd-gallery-card">
+                    <img src="${Security.sanitize(img)}" alt="" loading="lazy">
+                </div>`
+            ).join('');
+            strip.style.display = '';
+        } else {
+            strip.style.display = 'none';
+        }
 
         document.getElementById('pdCategory').textContent = (acc.category || 'other').toUpperCase();
         const stock = parseInt(acc.stock) || 0;
