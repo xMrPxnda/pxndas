@@ -104,6 +104,16 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
+// --- Config API (exposes env vars to frontend) ---
+app.get('/api/config', (req, res) => {
+    res.json({
+        ok: true,
+        aiKey: process.env.AI_API_KEY || '',
+        aiModel: process.env.AI_MODEL || 'openai/gpt-4o-mini',
+        aiProvider: process.env.AI_PROVIDER || 'openrouter'
+    });
+});
+
 // --- Data API ---
 app.get('/api/data/:key', (req, res) => {
     try {

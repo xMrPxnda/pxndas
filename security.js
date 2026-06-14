@@ -131,7 +131,7 @@ const Security = (() => {
                 const shared = ['pxndas_users', 'service_requests', 'store_accounts', 'nexus_posts', 'support_tickets', 'live_chat_messages'];
                 shared.forEach(k => serverSet(k, null));
             }
-            const safe = ['theme'];
+            const safe = ['theme', 'pxndas_ai_key', 'pxndas_ai_model', 'pxndas_ai_provider'];
             const keep = new Set(safe);
             Object.keys(localStorage).forEach(k => {
                 if (!keep.has(k)) localStorage.removeItem(k);

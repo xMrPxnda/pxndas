@@ -397,8 +397,8 @@ You: Here are your orders:
     // --- Proxy AI call ---
     const callProxyAI = async (query) => {
         const apiKey = localStorage.getItem('pxndas_ai_key');
-        const model = localStorage.getItem('pxndas_ai_model') || 'gemini-2.0-flash-001';
-        const provider = localStorage.getItem('pxndas_ai_provider') || 'gemini';
+        const model = localStorage.getItem('pxndas_ai_model') || 'openai/gpt-4o-mini';
+        const provider = localStorage.getItem('pxndas_ai_provider') || 'openrouter';
 
         const context = buildPrompt();
         const msgs = [

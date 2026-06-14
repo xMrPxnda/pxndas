@@ -564,10 +564,21 @@ document.addEventListener('DOMContentLoaded', () => {
             usageEl.textContent = kb + ' KB';
         }
 
-        // AI config
+        // AI config — auto-save defaults if not configured yet
+        if (!localStorage.getItem('pxndas_ai_key')) {
+            // Try to fetch from server env
+            fetch('/api/config').then(r => r.json()).then(cfg => {
+                if (cfg.ok && cfg.aiKey) {
+                    localStorage.setItem('pxndas_ai_key', cfg.aiKey);
+                    if (cfg.aiModel) localStorage.setItem('pxndas_ai_model', cfg.aiModel);
+                    if (cfg.aiProvider) localStorage.setItem('pxndas_ai_provider', cfg.aiProvider);
+                    loadSettings();
+                }
+            }).catch(() => {});
+        }
         const savedKey = localStorage.getItem('pxndas_ai_key') || '';
-        const savedModel = localStorage.getItem('pxndas_ai_model') || 'gemini-2.0-flash-exp';
-        const savedProvider = localStorage.getItem('pxndas_ai_provider') || 'gemini';
+        const savedModel = localStorage.getItem('pxndas_ai_model') || 'openai/gpt-4o-mini';
+        const savedProvider = localStorage.getItem('pxndas_ai_provider') || 'openrouter';
         const aiKeyInput = document.getElementById('aiApiKey');
         const aiModelSelect = document.getElementById('aiModel');
         const aiProviderSelect = document.getElementById('aiProvider');
