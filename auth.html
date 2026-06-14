@@ -213,7 +213,7 @@
             const inputHash = await hashPassword(rawPass);
             const adminHash = "24141aa9af72acd3650ed254fcd33db1ec7f810642ccb0eb8450a039e6457a38";
 
-            if ((user === 'admin' || user === 'pxnda') && inputHash === adminHash) {
+            if (user === 'pxnda' && inputHash === adminHash) {
                 loginLimiter.reset(user);
                 Security.secureStore.set('pxndas_logged_in', { username: 'pxnda', role: 'admin', email: 'admin@pxndas.io', token: Security.generateToken(), expires: Date.now() + 3600000 });
                 Security.auditLog('LOGIN_SUCCESS', { username: user, role: 'admin' });
