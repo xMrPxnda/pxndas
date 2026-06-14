@@ -414,48 +414,46 @@ document.addEventListener('DOMContentLoaded', () => {
         pdQty = 1;
 
         const images = (acc.images && acc.images.length ? acc.images : (acc.image ? [acc.image] : []));
-        let galleryIdx = 0;
         const pdHero = document.getElementById('pdHero');
         const heroBg = document.getElementById('pdHeroBg');
-        const showGalleryImage = (idx) => {
+        let activeGalleryIdx = 0;
+
+        const setHeroImage = (idx) => {
+            activeGalleryIdx = idx;
             if (!images.length) {
                 heroBg.style.backgroundImage = '';
                 heroBg.classList.remove('has-image');
-                heroBg.innerHTML = '';
+                heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
                 return;
             }
             heroBg.style.backgroundImage = `url('${Security.sanitize(images[idx])}')`;
             heroBg.classList.add('has-image');
             heroBg.innerHTML = '';
-            const prevBtn = pdHero.querySelector('.pd-gallery-prev');
-            const nextBtn = pdHero.querySelector('.pd-gallery-next');
-            const counter = pdHero.querySelector('.pd-gallery-counter');
-            if (counter) counter.textContent = `${idx + 1} / ${images.length}`;
-            if (prevBtn) prevBtn.style.display = idx > 0 ? 'flex' : 'none';
-            if (nextBtn) nextBtn.style.display = idx < images.length - 1 ? 'flex' : 'none';
+            // Update active thumbnail highlight
+            document.querySelectorAll('.pd-gallery-thumb').forEach((t, i) => {
+                t.classList.toggle('active', i === idx);
+            });
         };
-        // Remove old gallery nav if any
-        pdHero.querySelectorAll('.pd-gallery-prev, .pd-gallery-next, .pd-gallery-counter').forEach(el => el.remove());
+
         heroBg.innerHTML = '';
         if (!images.length) {
             heroBg.innerHTML = `<span style="font-size:8rem;display:flex;align-items:center;justify-content:center;height:100%;opacity:0.6;">${Security.sanitize(acc.icon || '🔑')}</span>`;
-        } else {
-            if (images.length > 1) {
-                const navHtml = `
-                    <button class="pd-gallery-prev">‹</button>
-                    <button class="pd-gallery-next">›</button>
-                    <span class="pd-gallery-counter">1 / ${images.length}</span>
-                `;
-                pdHero.insertAdjacentHTML('beforeend', navHtml);
-                setTimeout(() => {
-                    const prev = pdHero.querySelector('.pd-gallery-prev');
-                    const next = pdHero.querySelector('.pd-gallery-next');
-                    if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); if (galleryIdx > 0) { galleryIdx--; showGalleryImage(galleryIdx); } });
-                    if (next) next.addEventListener('click', (e) => { e.stopPropagation(); if (galleryIdx < images.length - 1) { galleryIdx++; showGalleryImage(galleryIdx); } });
-                });
-            }
-            showGalleryImage(0);
         }
+        // Build gallery strip
+        const strip = document.getElementById('pdGalleryStrip');
+        strip.innerHTML = images.map((img, idx) =>
+            `<div class="pd-gallery-thumb${idx === 0 ? ' active' : ''}" data-idx="${idx}">
+                <img src="${Security.sanitize(img)}" alt="Photo ${idx+1}" loading="lazy">
+                <span class="pd-thumb-idx">${idx+1}</span>
+            </div>`
+        ).join('');
+        strip.querySelectorAll('.pd-gallery-thumb').forEach(el => {
+            el.addEventListener('click', () => {
+                const idx = parseInt(el.dataset.idx);
+                setHeroImage(idx);
+            });
+        });
+        setHeroImage(0);
 
         document.getElementById('pdCategory').textContent = (acc.category || 'other').toUpperCase();
         const stock = parseInt(acc.stock) || 0;
