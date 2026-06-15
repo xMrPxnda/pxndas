@@ -300,38 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const loadPosts = () => {
-        const postsGrid = document.getElementById('postsGrid');
-        if (!postsGrid) return;
-
-        const posts = Security.secureStore.get('pxnda_posts') || [];
-        const escapeHtml = (str) => Security.sanitize(str || '');
-
-        const renderPost = (post, index) => `
-            <article class="post-card" style="animation: slideIn 0.4s ease ${index * 0.1}s forwards; opacity: 0;">
-                <div class="post-date-box">
-                    <div class="post-date">${escapeHtml(post.date)}</div>
-                    <div class="post-id">ENTRY_ID: 0x${escapeHtml((Math.floor(Math.random()*1000)).toString(16))}</div>
-                </div>
-                <div class="post-content-box">
-                    <div class="post-tag">Security_Alert</div>
-                    <h3>${escapeHtml(post.title)}</h3>
-                    <p>${escapeHtml(post.content)}</p>
-                    <a href="#" class="read-more">DECRYPT FULL ENTRY...</a>
-                </div>
-            </article>
-        `;
-
-        const staticPost = {
-            date: "JUNE 14, 2026",
-            title: "System Protocol Update",
-            content: "We've implemented new quantum encryption across all digital asset deliveries. Security is our priority."
-        };
-
-        postsGrid.innerHTML = renderPost(staticPost, 0) + posts.map((post, i) => renderPost(post, i+1)).join('');
-    };
-
-    loadPosts();
+    // Feed section removed
 
     // Load dynamic store accounts from admin
     const loadStoreAccounts = () => {
