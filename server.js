@@ -74,7 +74,7 @@ app.post('/api/chat', async (req, res) => {
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: msgs, generationConfig: { maxOutputTokens: 1024, temperature: 0.7 } })
+                    body: JSON.stringify({ contents: msgs, generationConfig: { maxOutputTokens: 512, temperature: 0.7 } })
                 }
             );
             if (!gRes.ok) {
@@ -101,7 +101,7 @@ app.post('/api/chat', async (req, res) => {
                 body: JSON.stringify({
                     model: model,
                     messages: msgs,
-                    max_tokens: 1024,
+                    max_tokens: 512,
                     temperature: 0.7
                 })
             });
