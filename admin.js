@@ -761,6 +761,33 @@ document.addEventListener('DOMContentLoaded', () => {
             updateModels();
             aiProviderSelect.addEventListener('change', updateModels);
         }
+
+        // SMTP config — load from server
+        fetch('/api/data/smtp_config').then(r => r.json()).then(res => {
+            if (res.ok && res.data) {
+                const cfg = res.data;
+                const hostEl = document.getElementById('smtpHost');
+                const portEl = document.getElementById('smtpPort');
+                const userEl = document.getElementById('smtpUser');
+                const fromEl = document.getElementById('smtpFrom');
+                const adminEl = document.getElementById('smtpAdminEmail');
+                const statusEl = document.getElementById('smtpStatus');
+                if (hostEl) hostEl.value = cfg.host || '';
+                if (portEl) portEl.value = cfg.port || '';
+                if (userEl) userEl.value = cfg.user || '';
+                if (fromEl) fromEl.value = cfg.from || '';
+                if (adminEl) adminEl.value = cfg.adminEmail || '';
+                if (statusEl) {
+                    if (cfg.host && cfg.user) {
+                        statusEl.textContent = 'Configured ✓';
+                        statusEl.style.color = 'var(--secondary)';
+                    } else {
+                        statusEl.textContent = 'Not configured';
+                        statusEl.style.color = 'var(--text-muted)';
+                    }
+                }
+            }
+        }).catch(() => {});
     };
 
     // Idle timeout slider
@@ -859,6 +886,72 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             testAiBtn.textContent = 'Test';
             testAiBtn.disabled = false;
+        });
+    }
+
+    // SMTP Save button
+    const saveSmtpBtn = document.getElementById('saveSmtpConfig');
+    if (saveSmtpBtn) {
+        saveSmtpBtn.addEventListener('click', () => {
+            const host = document.getElementById('smtpHost').value.trim();
+            const port = document.getElementById('smtpPort').value.trim();
+            const user = document.getElementById('smtpUser').value.trim();
+            const pass = document.getElementById('smtpPass').value;
+            const from = document.getElementById('smtpFrom').value.trim();
+            const adminEmail = document.getElementById('smtpAdminEmail').value.trim();
+            if (!host || !user || !pass) {
+                Security.toast.show('SMTP Host, Email and Password are required.', 'warning');
+                return;
+            }
+            const config = { host, port, user, pass };
+            if (from) config.from = from;
+            if (adminEmail) config.adminEmail = adminEmail;
+            Security.secureStore.set('smtp_config', config);
+            Security.auditLog('SMTP_CONFIG_SAVED', { host, user });
+            Security.toast.show('SMTP config saved.', 'success');
+            document.getElementById('smtpPass').value = '';
+            loadSettings();
+        });
+    }
+
+    // SMTP Test button
+    const testSmtpBtn = document.getElementById('testSmtpBtn');
+    if (testSmtpBtn) {
+        testSmtpBtn.addEventListener('click', async () => {
+            testSmtpBtn.textContent = 'Sending...';
+            testSmtpBtn.disabled = true;
+            try {
+                // Read saved config from the server so password doesn't need re-entry
+                const cfgRes = await fetch('/api/data/smtp_config');
+                const cfgJson = await cfgRes.json();
+                if (!cfgJson.ok || !cfgJson.data || !cfgJson.data.host || !cfgJson.data.user || !cfgJson.data.pass) {
+                    Security.toast.show('Save SMTP config first before testing.', 'warning');
+                    testSmtpBtn.textContent = 'Test Email';
+                    testSmtpBtn.disabled = false;
+                    return;
+                }
+                const cfg = cfgJson.data;
+                const testRes = await fetch('/api/send-receipt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: cfg.user,
+                        orderId: 'TEST-' + Date.now().toString(36).toUpperCase(),
+                        items: 'SMTP Configuration Test',
+                        total: '$0.00'
+                    })
+                });
+                const testJson = await testRes.json();
+                if (testJson.ok) {
+                    Security.toast.show('Test email sent! Check your inbox.', 'success');
+                } else {
+                    Security.toast.show('Email failed: ' + testJson.error, 'error');
+                }
+            } catch (e) {
+                Security.toast.show('Cannot reach server.', 'error');
+            }
+            testSmtpBtn.textContent = 'Test Email';
+            testSmtpBtn.disabled = false;
         });
     }
 

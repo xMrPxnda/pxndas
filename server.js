@@ -229,7 +229,23 @@ app.post('/api/send-receipt', rateLimit(10, 60000), async (req, res) => {
         if (!email || !orderId) {
             return res.status(400).json({ ok: false, error: 'Missing email or orderId' });
         }
-        const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_ADMIN_EMAIL } = process.env;
+        // Try env vars first, then fall back to data config
+        let { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_ADMIN_EMAIL } = process.env;
+        if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+            // Fallback to config from data file (configured via admin panel)
+            try {
+                const configPath = path.join(dataDir, 'smtp_config.json');
+                if (fs.existsSync(configPath)) {
+                    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+                    SMTP_HOST = cfg.host || SMTP_HOST;
+                    SMTP_PORT = cfg.port || SMTP_PORT;
+                    SMTP_USER = cfg.user || SMTP_USER;
+                    SMTP_PASS = cfg.pass || SMTP_PASS;
+                    SMTP_FROM = cfg.from || SMTP_FROM;
+                    SMTP_ADMIN_EMAIL = cfg.adminEmail || SMTP_ADMIN_EMAIL;
+                }
+            } catch {}
+        }
         if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
             return res.status(400).json({ ok: false, error: 'SMTP not configured' });
         }
@@ -267,9 +283,19 @@ app.post('/api/send-receipt', rateLimit(10, 60000), async (req, res) => {
     }
 });
 
-// --- Data API (read is public, write requires same-origin) ---
+// --- Data API (read requires same-origin for sensitive keys) ---
+const SENSITIVE_DATA_KEYS = new Set(['smtp_config']);
+const requireSameOrigin = (req) => {
+    const origin = req.headers.origin;
+    if (!origin) return false;
+    return isSameOrigin(req);
+};
 app.get('/api/data/:key', rateLimit(120, 60000), (req, res) => {
     try {
+        // Block public reads of sensitive keys (e.g. SMTP credentials)
+        if (SENSITIVE_DATA_KEYS.has(req.params.key) && !requireSameOrigin(req)) {
+            return res.status(403).json({ ok: false, error: 'Access denied' });
+        }
         const filePath = safePath(req.params.key);
         if (fs.existsSync(filePath)) {
             const content = fs.readFileSync(filePath, 'utf-8');

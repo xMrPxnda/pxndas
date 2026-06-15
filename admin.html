@@ -361,6 +361,27 @@
                         </div>
                     </div>
 
+                    <!-- SMTP Email Configuration -->
+                    <div class="settings-card" style="grid-column:1/-1;">
+                        <div class="settings-icon">📧</div>
+                        <div style="flex:1;">
+                            <h4>Email Receipts (SMTP)</h4>
+                            <div class="smtp-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem;">
+                                <input type="text" id="smtpHost" placeholder="SMTP Host (e.g. smtp.gmail.com)" style="width:100%;">
+                                <input type="text" id="smtpPort" placeholder="Port (587)" style="width:100%;">
+                                <input type="text" id="smtpUser" placeholder="Email address" style="width:100%;">
+                                <input type="password" id="smtpPass" placeholder="App password" style="width:100%;">
+                                <input type="text" id="smtpFrom" placeholder="From name/email (optional)" style="width:100%;">
+                                <input type="text" id="smtpAdminEmail" placeholder="Admin notification email (optional)" style="width:100%;">
+                            </div>
+                            <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                                <button id="saveSmtpConfig" class="btn btn-sm btn-save-ai">Save SMTP</button>
+                                <button id="testSmtpBtn" class="btn btn-sm btn-test-ai">Test Email</button>
+                                <span id="smtpStatus" style="display:inline-flex;align-items:center;margin-left:0.5rem;font-size:0.75rem;color:var(--text-muted);">Not configured</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- AI Integration -->
                     <div class="settings-card" style="grid-column:1/-1;">
                         <div class="settings-icon">🧠</div>
