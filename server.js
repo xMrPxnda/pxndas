@@ -156,16 +156,15 @@ app.post('/api/data/:key', (req, res) => {
 const projectRoot = __dirname;
 
 const safeFilePath = (userPath) => {
-    const resolved = path.resolve(projectRoot, userPath);
-    if (!resolved.startsWith(projectRoot)) return null;
-    return resolved;
+    // Allow absolute paths (Unix: /path, Windows: C:\path) or relative to project
+    if (path.isAbsolute(userPath)) return path.resolve(userPath);
+    return path.resolve(projectRoot, userPath);
 };
 
 // List files in a directory
 app.get('/api/files/list', (req, res) => {
     try {
         const dirPath = safeFilePath(req.query.dir || '.');
-        if (!dirPath) return res.status(403).json({ ok: false, error: 'Access denied' });
         if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
             return res.status(404).json({ ok: false, error: 'Directory not found' });
         }
