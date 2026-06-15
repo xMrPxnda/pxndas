@@ -25,7 +25,7 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
@@ -42,8 +42,8 @@ body {
         radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 50%, rgba(255, 0, 255, 0.06) 0%, transparent 60%);
     color: var(--text-dark);
-    overflow-x: hidden;
     min-height: 100vh;
+    width: 100%;
 }
 
 #matrix-canvas {
@@ -248,9 +248,10 @@ nav {
     padding: 0 2rem;
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
-    align-items: center;
     gap: 3rem;
+    align-items: center;
     min-height: 70vh;
+    width: 100%;
 }
 
 .hero-content h1 {
@@ -376,7 +377,7 @@ nav {
 .c2 { top: 35%; right: 5%; animation-delay: 2s; border-color: rgba(0, 255, 255, 0.3); box-shadow: 0 10px 40px rgba(0, 255, 255, 0.1); }
 .c3 { bottom: 20px; left: 25%; animation-delay: 4s; border-color: rgba(255, 0, 255, 0.3); box-shadow: 0 10px 40px rgba(255, 0, 255, 0.1); }
 
-#products { max-width: 1200px; margin: 8rem auto; padding: 0 2rem; }
+#products { max-width: 1200px; margin: 8rem auto; padding: 0 2rem; width: 100%; }
 
 .section-header { text-align: center; margin-bottom: 3.5rem; }
 
@@ -1279,6 +1280,7 @@ footer {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
     gap: 3rem;
+    width: 100%;
 }
 
 .footer-info p { color: var(--text-muted); margin-top: 1rem; max-width: 320px; font-size: 0.9rem; }
