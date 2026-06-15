@@ -1043,12 +1043,11 @@ You: Creating the new file.
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
 
-        if (apiKey && isAiEnabled()) {
-            try {
+        try {
+            if (apiKey && isAiEnabled()) {
                 const response = await callProxyAI(text);
                 removeTyping();
 
-                // Check for tool calls in the response
                 const toolCalls = parseToolCalls(response);
                 const cleanText = response.replace(/\{tool:\w+\}[\s\S]*?\{\/tool\}/g, '').trim();
 
@@ -1056,29 +1055,30 @@ You: Creating the new file.
                     appendMessage(formatAIResponse(cleanText));
                 }
 
-                // Execute each tool call
                 for (const call of toolCalls) {
-                    const result = await execTool(call);
+                    let result;
+                    try {
+                        result = await execTool(call);
+                    } catch (e) {
+                        result = `Error: ${e.message}`;
+                    }
                     appendMessage(`⚙️ **${call.name}** → ${result}`, 'system');
                 }
 
                 if (!toolCalls.length && !cleanText) {
                     appendMessage(formatAIResponse(response));
                 }
-
-                processingTool = false;
-                return;
-            } catch (e) {
+            } else {
+                await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
                 removeTyping();
-                appendMessage(`⚠️ API error: ${e.message}. Falling back to local mode...`);
-                // fall through to local
+                appendMessage(await localResponse(text));
             }
+        } catch (e) {
+            removeTyping();
+            appendMessage(`⚠️ Error: ${e.message}`);
+        } finally {
+            processingTool = false;
         }
-
-        await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
-        removeTyping();
-        appendMessage(await localResponse(text));
-        processingTool = false;
     };
 
     // --- Format AI markdown response ---

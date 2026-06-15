@@ -352,31 +352,35 @@ ${listings}
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
 
-        if (apiKey && isAiEnabled()) {
-            try {
+        try {
+            if (apiKey && isAiEnabled()) {
                 const response = await callProxyAI(text);
                 removeTyping();
 
-                // Parse and execute tool calls
                 const toolCalls = parseToolCalls(response);
                 let output = response.replace(/\{tool:\w+\}[\s\S]*?\{\/tool\}/g, '').trim();
                 for (const call of toolCalls) {
-                    const result = await execTool(call);
+                    let result;
+                    try {
+                        result = await execTool(call);
+                    } catch (e) {
+                        result = `Error: ${e.message}`;
+                    }
                     lastToolResult = result;
                     if (output) output += '\n\n' + result;
                     else output = result;
                 }
 
                 appendMessage(formatResponse(output || 'Done.'));
-                return;
-            } catch {
-                // Fall through to local
+            } else {
+                await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
+                removeTyping();
+                appendMessage(localResponse(text));
             }
+        } catch (e) {
+            removeTyping();
+            appendMessage(`⚠️ Error: ${e.message}`);
         }
-
-        await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
-        removeTyping();
-        appendMessage(localResponse(text));
     };
 
     sendBtn.addEventListener('click', handleSend);
