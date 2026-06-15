@@ -18,12 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let processingTool = false;
     const AI_TOGGLE_KEY = 'pxndas_ai_toggle';
 
-    // Auto-load AI key from server env if not in localStorage
-    (function ensureAiKey() {
-        if (!localStorage.getItem('pxndas_ai_key')) {
+    // Auto-load AI config from server env
+    (function ensureAiConfig() {
+        if (!localStorage.getItem('pxndas_ai_key') && !localStorage.getItem('pxndas_has_server_key')) {
             fetch('/api/config').then(r => r.json()).then(cfg => {
-                if (cfg.ok && cfg.aiKey) {
-                    localStorage.setItem('pxndas_ai_key', cfg.aiKey);
+                if (cfg.ok && cfg.hasAiKey) {
+                    localStorage.setItem('pxndas_has_server_key', 'true');
                     if (cfg.aiModel) localStorage.setItem('pxndas_ai_model', cfg.aiModel);
                     if (cfg.aiProvider) localStorage.setItem('pxndas_ai_provider', cfg.aiProvider);
                     updateHeaderMode();
@@ -33,9 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     const isAiEnabled = () => {
-        const hasKey = !!localStorage.getItem('pxndas_ai_key');
+        const hasKey = !!localStorage.getItem('pxndas_ai_key') || localStorage.getItem('pxndas_has_server_key') === 'true';
         const pref = localStorage.getItem(AI_TOGGLE_KEY);
-        // Default: ON if key exists, OFF if no key
         if (pref === null) return hasKey;
         return pref === 'true' && hasKey;
     };
@@ -761,7 +760,9 @@ Admin: "Switch to live payments" → {tool:update_setting}{"key":"payment_mode",
 
     // --- Proxy AI call ---
     const callProxyAI = async (query) => {
-        const apiKey = localStorage.getItem('pxndas_ai_key');
+        // Use server env key if no local key is set
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
+        const apiKey = localStorage.getItem('pxndas_ai_key') || (hasServerKey ? '__server__' : '');
         const model = localStorage.getItem('pxndas_ai_model') || 'openai/gpt-4o-mini';
         const provider = localStorage.getItem('pxndas_ai_provider') || 'openrouter';
 
@@ -786,12 +787,13 @@ Admin: "Switch to live payments" → {tool:update_setting}{"key":"payment_mode",
     const updateHeaderMode = () => {
         if (!headerLabel) return;
         const key = localStorage.getItem('pxndas_ai_key');
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
         const model = localStorage.getItem('pxndas_ai_model') || '';
         const short = model.split('/').pop() || model;
         const toggle = document.getElementById('chatAiToggle');
         const enabled = isAiEnabled();
         if (toggle) toggle.checked = enabled;
-        if (key && enabled) {
+        if ((key || hasServerKey) && enabled) {
             headerLabel.textContent = short.toUpperCase();
             headerLabel.style.cssText = 'color:var(--secondary);border-color:rgba(0,255,255,0.2);background:rgba(0,255,255,0.1)';
             if (titleSub) titleSub.textContent = model;
@@ -830,9 +832,10 @@ Admin: "Switch to live payments" → {tool:update_setting}{"key":"payment_mode",
         processingTool = true;
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
 
         try {
-            if (apiKey && isAiEnabled()) {
+            if ((apiKey || hasServerKey) && isAiEnabled()) {
                 const response = await callProxyAI(text);
                 removeTyping();
 

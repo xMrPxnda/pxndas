@@ -1,8 +1,40 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 8000;
+
+// Rate limit state (in-memory)
+const rateLimitStore = new Map();
+const ipRequestCounts = new Map();
+
+const rateLimit = (maxRequests, windowMs) => {
+    return (req, res, next) => {
+        const ip = req.ip || req.connection.remoteAddress || 'unknown';
+        const now = Date.now();
+        const key = ip + ':' + req.path;
+        const entry = ipRequestCounts.get(key) || { count: 0, start: now };
+        if (now - entry.start > windowMs) {
+            entry.count = 0;
+            entry.start = now;
+        }
+        entry.count++;
+        ipRequestCounts.set(key, entry);
+        if (entry.count > maxRequests) {
+            return res.status(429).json({ ok: false, error: 'Too many requests. Slow down.' });
+        }
+        next();
+    };
+};
+
+// Periodic cleanup of rate limit store
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of ipRequestCounts) {
+        if (now - entry.start > 60000) ipRequestCounts.delete(key);
+    }
+}, 60000);
 
 // Data directory
 const dataDir = path.join(__dirname, 'data');
@@ -27,9 +59,61 @@ seedFile('live_chat_messages', []);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
+// Security headers
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Powered-By', 'pxndas');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    // HSTS (only in production with HTTPS)
+    if (req.headers['x-forwarded-proto'] === 'https') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    next();
+});
+
+// CSP for HTML pages (only for non-API routes)
+app.use((req, res, next) => {
+    if (!req.path.startsWith('/api/')) {
+        res.setHeader('Content-Security-Policy',
+            "default-src 'self'; " +
+            "script-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.paypal.com 'unsafe-inline' 'unsafe-eval'; " +
+            "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
+            "font-src 'self' https://fonts.gstatic.com; " +
+            "img-src 'self' data: https://www.paypal.com; " +
+            "frame-src https://www.paypal.com; " +
+            "connect-src 'self' https://openrouter.ai https://api.openai.com; " +
+            "form-action 'self';"
+        );
+    }
+    next();
+});
+
+// CORS — restrict to same-origin by default (no wildcard for write APIs)
+const isSameOrigin = (req) => {
+    const origin = req.headers.origin;
+    const host = req.headers.host;
+    if (!origin) return true; // Same-origin requests from the same server
+    try {
+        const originUrl = new URL(origin);
+        return originUrl.host === host || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1';
+    } catch { return false; }
+};
+
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        // Only allow same-origin or localhost
+        const host = req.headers.host;
+        try {
+            const originUrl = new URL(origin);
+            if (originUrl.host === host || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+            }
+        } catch {}
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -43,34 +127,42 @@ const safePath = (key) => {
     return path.join(dataDir, safe + '.json');
 };
 
-// --- API Proxy ---
-app.post('/api/chat', async (req, res) => {
-    const { provider, apiKey, model, query, context, history } = req.body;
+// --- API Proxy (rate limited) ---
+app.post('/api/chat', rateLimit(30, 60000), async (req, res) => {
+    let { provider, apiKey, model, query, context, history } = req.body;
+    // If client sends __server__, use the server's env key
+    if (apiKey === '__server__') {
+        apiKey = process.env.AI_API_KEY || '';
+    }
     if (!apiKey || !query) return res.status(400).json({ ok: false, error: 'Missing apiKey or query' });
+
+    // Sanitize model name to prevent injection
+    const safeModel = typeof model === 'string' ? model.replace(/[^a-zA-Z0-9_\-\/\.:]/g, '') : 'openai/gpt-4o-mini';
 
     try {
         let reply;
         if (provider === 'gemini') {
+            if (!history || !Array.isArray(history)) {
+                return res.status(400).json({ ok: false, error: 'Invalid history format' });
+            }
             const msgs = [];
             let firstUser = true;
-            if (history) {
-                for (const msg of history) {
-                    if (msg.role === 'system') {
-                        if (firstUser) context = msg.content;
-                    } else if (msg.role === 'assistant') {
-                        msgs.push({ role: 'model', parts: [{ text: msg.content }] });
-                    } else if (msg.role === 'user') {
-                        const text = firstUser && context ? `${context}\n\n${msg.content}` : msg.content;
-                        msgs.push({ role: 'user', parts: [{ text }] });
-                        firstUser = false;
-                    }
+            let sanitizedContext = typeof context === 'string' ? context : '';
+            for (const msg of history) {
+                if (!msg || typeof msg !== 'object') continue;
+                if (msg.role === 'system') {
+                    if (firstUser) sanitizedContext = String(msg.content || '');
+                } else if (msg.role === 'assistant') {
+                    msgs.push({ role: 'model', parts: [{ text: String(msg.content || '') }] });
+                } else if (msg.role === 'user') {
+                    const text = firstUser && sanitizedContext ? `${sanitizedContext}\n\n${msg.content}` : String(msg.content || '');
+                    msgs.push({ role: 'user', parts: [{ text }] });
+                    firstUser = false;
                 }
-            } else {
-                msgs.push({ parts: [{ text: `${context}\n\nAdmin: ${query}` }] });
             }
 
             const gRes = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${safeModel}:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -78,18 +170,18 @@ app.post('/api/chat', async (req, res) => {
                 }
             );
             if (!gRes.ok) {
-                const err = await gRes.text();
-                throw new Error(`Gemini API ${gRes.status}: ${err}`);
+                const errText = await gRes.text();
+                throw new Error(`Gemini API ${gRes.status}`);
             }
             const gData = await gRes.json();
             reply = gData.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
         } else {
             // OpenRouter
             let msgs = history;
-            if (!msgs || msgs.length === 0) {
+            if (!msgs || !Array.isArray(msgs) || msgs.length === 0) {
                 msgs = [
-                    { role: 'system', content: context },
-                    { role: 'user', content: query }
+                    { role: 'system', content: typeof context === 'string' ? context : '' },
+                    { role: 'user', content: String(query) }
                 ];
             }
             const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -99,15 +191,15 @@ app.post('/api/chat', async (req, res) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: model,
+                    model: safeModel,
                     messages: msgs,
                     max_tokens: 512,
                     temperature: 0.7
                 })
             });
             if (!orRes.ok) {
-                const err = await orRes.text();
-                throw new Error(`OpenRouter API ${orRes.status}: ${err}`);
+                const errText = await orRes.text();
+                throw new Error(`OpenRouter API ${orRes.status}`);
             }
             const orData = await orRes.json();
             reply = orData.choices?.[0]?.message?.content || 'No response';
@@ -119,18 +211,30 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// --- Config API (exposes env vars to frontend) ---
+// --- Config API (no longer exposes API key to frontend) ---
 app.get('/api/config', (req, res) => {
     res.json({
         ok: true,
-        aiKey: process.env.AI_API_KEY || '',
+        hasAiKey: !!process.env.AI_API_KEY,
         aiModel: process.env.AI_MODEL || 'openai/gpt-4o-mini',
         aiProvider: process.env.AI_PROVIDER || 'openrouter'
     });
 });
 
-// --- Data API ---
-app.get('/api/data/:key', (req, res) => {
+// --- Session token validation helper ---
+const SESSION_TOKENS = new Set();
+const validateSession = (req, res, next) => {
+    const token = req.headers['x-session-token'];
+    if (!token || !SESSION_TOKENS.has(token)) {
+        // Allow if same-origin (no token needed for same-origin requests)
+        if (isSameOrigin(req)) return next();
+        return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+    next();
+};
+
+// --- Data API (read is public, write requires session/same-origin) ---
+app.get('/api/data/:key', rateLimit(120, 60000), (req, res) => {
     try {
         const filePath = safePath(req.params.key);
         if (fs.existsSync(filePath)) {
@@ -141,10 +245,23 @@ app.get('/api/data/:key', (req, res) => {
     } catch { return res.status(400).json({ ok: false, error: 'Invalid key' }); }
 });
 
-app.post('/api/data/:key', (req, res) => {
+app.post('/api/data/:key', rateLimit(30, 60000), (req, res) => {
     try {
+        // Same-origin check for write operations
+        if (!isSameOrigin(req)) {
+            return res.status(403).json({ ok: false, error: 'Cross-origin write denied' });
+        }
         const filePath = safePath(req.params.key);
         const data = req.body;
+        if (data === null || data === undefined) {
+            // Delete the file
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            return res.json({ ok: true });
+        }
+        // Validate data is a plain object or array
+        if (typeof data !== 'object' || data === null) {
+            return res.status(400).json({ ok: false, error: 'Data must be an object or array' });
+        }
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
         return res.json({ ok: true });
     } catch (e) {
@@ -152,19 +269,47 @@ app.post('/api/data/:key', (req, res) => {
     }
 });
 
-// --- File System API (for Pxnda AI code editing) ---
+// --- File System API (for Pxnda AI code editing) - AUTHENTICATION REQUIRED ---
 const projectRoot = __dirname;
 
+// Critical files that cannot be written/edited (protect server integrity)
+const CRITICAL_FILES = new Set([
+    'server.js', 'package.json', 'package-lock.json', '.env', '.gitignore',
+    'Procfile', 'railway.json', 'start-server.bat', 'Dockerfile'
+]);
+
+// Only allow editing these file extensions
+const ALLOWED_EXTENSIONS = new Set([
+    '.html', '.css', '.js', '.json', '.md', '.txt', '.xml', '.svg',
+    '.yaml', '.yml', '.toml', '.cfg', '.conf', '.ini', '.env.example'
+]);
+
 const safeFilePath = (userPath) => {
+    if (typeof userPath !== 'string') return null;
+    // Reject null bytes and control characters
+    if (/[\x00-\x1f]/.test(userPath)) return null;
+    // Reject empty paths
+    if (!userPath.trim()) return null;
     // Allow absolute paths (Unix: /path, Windows: C:\path) or relative to project
     if (path.isAbsolute(userPath)) return path.resolve(userPath);
     return path.resolve(projectRoot, userPath);
 };
 
+// Authentication middleware for file operations
+const requireFileAuth = (req, res, next) => {
+    if (isSameOrigin(req)) return next();
+    const token = req.headers['x-session-token'];
+    if (!token || !SESSION_TOKENS.has(token)) {
+        return res.status(401).json({ ok: false, error: 'File operations require authentication' });
+    }
+    next();
+};
+
 // List files in a directory
-app.get('/api/files/list', (req, res) => {
+app.get('/api/files/list', rateLimit(30, 60000), requireFileAuth, (req, res) => {
     try {
         const dirPath = safeFilePath(req.query.dir || '.');
+        if (!dirPath) return res.status(400).json({ ok: false, error: 'Invalid path' });
         if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
             return res.status(404).json({ ok: false, error: 'Directory not found' });
         }
@@ -174,59 +319,81 @@ app.get('/api/files/list', (req, res) => {
             type: e.isDirectory() ? 'dir' : 'file',
             size: e.isFile() ? fs.statSync(path.join(dirPath, e.name)).size : 0
         }));
-        res.json({ ok: true, files, path: req.query.dir || '.' });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+        res.json({ ok: true, files });
+    } catch { res.status(500).json({ ok: false, error: 'Error reading directory' }); }
 });
 
 // Read a file
-app.get('/api/files/read', (req, res) => {
+app.get('/api/files/read', rateLimit(30, 60000), requireFileAuth, (req, res) => {
     try {
         const filePath = safeFilePath(req.query.path);
-        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!filePath) return res.status(400).json({ ok: false, error: 'Invalid path' });
         if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
             return res.status(404).json({ ok: false, error: 'File not found' });
         }
         const ext = path.extname(filePath);
+        // Only allow reading text-based files through this API
+        if (!ALLOWED_EXTENSIONS.has(ext) && ext !== '') {
+            return res.status(403).json({ ok: false, error: 'File type not readable through API' });
+        }
         const content = fs.readFileSync(filePath, 'utf-8');
         res.json({ ok: true, content, path: req.query.path, size: content.length, ext });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch { res.status(500).json({ ok: false, error: 'Error reading file' }); }
 });
 
 // Write a file (create or overwrite)
-app.post('/api/files/write', (req, res) => {
+app.post('/api/files/write', rateLimit(15, 60000), requireFileAuth, (req, res) => {
     try {
         const filePath = safeFilePath(req.body.path);
-        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!filePath) return res.status(400).json({ ok: false, error: 'Invalid path' });
         const content = req.body.content;
         if (typeof content !== 'string') return res.status(400).json({ ok: false, error: 'content must be a string' });
-        // Ensure parent directory exists
+        if (content.length > 5000000) return res.status(413).json({ ok: false, error: 'File too large (max 5MB)' });
+
+        const basename = path.basename(filePath);
+        // Block writing to critical system files
+        if (CRITICAL_FILES.has(basename)) {
+            return res.status(403).json({ ok: false, error: 'Cannot modify critical system file: ' + basename });
+        }
+
+        const ext = path.extname(filePath);
+        if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
+            return res.status(403).json({ ok: false, error: 'File type not allowed' });
+        }
+
         const dir = path.dirname(filePath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, content, 'utf-8');
         console.log(`[FILE WRITE] ${req.body.path} (${content.length} chars)`);
         res.json({ ok: true, path: req.body.path, size: content.length });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'Error writing file' }); }
 });
 
 // Edit a file (find and replace)
-app.post('/api/files/edit', (req, res) => {
+app.post('/api/files/edit', rateLimit(15, 60000), requireFileAuth, (req, res) => {
     try {
         const filePath = safeFilePath(req.body.path);
-        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!filePath) return res.status(400).json({ ok: false, error: 'Invalid path' });
         if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, error: 'File not found' });
+
+        const basename = path.basename(filePath);
+        if (CRITICAL_FILES.has(basename)) {
+            return res.status(403).json({ ok: false, error: 'Cannot modify critical system file: ' + basename });
+        }
+
         const { oldString, newString } = req.body;
         if (typeof oldString !== 'string' || typeof newString !== 'string') {
             return res.status(400).json({ ok: false, error: 'oldString and newString are required' });
         }
+
         let content = fs.readFileSync(filePath, 'utf-8');
         if (!content.includes(oldString)) {
-            // Find nearby lines to help the AI self-correct
             const lines = content.split('\n');
             const previewLines = lines.slice(0, 30).map((l, i) => `${i + 1}: ${l}`).join('\n');
             return res.status(400).json({
                 ok: false,
                 error: 'oldString not found in file',
-                hint: 'oldString must match EXACTLY including whitespace. Read the file first and copy the exact text.',
+                hint: 'Must match EXACTLY including whitespace.',
                 preview: previewLines
             });
         }
@@ -235,10 +402,10 @@ app.post('/api/files/edit', (req, res) => {
         fs.writeFileSync(filePath, content, 'utf-8');
         console.log(`[FILE EDIT] ${req.body.path} (${count} occurrence${count > 1 ? 's' : ''})`);
         res.json({ ok: true, path: req.body.path, replacements: count });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'Error editing file' }); }
 });
 
-// --- Serve static files ---
+// --- Serve static files with caching headers ---
 app.use(express.static(__dirname, {
     index: 'index.html',
     setHeaders: (res, filePath) => {
@@ -256,17 +423,23 @@ app.use(express.static(__dirname, {
             '.ico': 'image/x-icon'
         };
         if (mime[ext]) res.setHeader('Content-Type', mime[ext]);
+        // Cache static assets for 1 hour
+        if (ext !== '.html') res.setHeader('Cache-Control', 'public, max-age=3600');
     }
 }));
 
-// Health check
+// Health check (minimal info)
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', cwd: process.cwd(), dir: __dirname, files: fs.readdirSync(__dirname).slice(0, 30) });
+    res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// 404 handler
+// 404 handler (no path leakage)
 app.use((req, res) => {
-    res.status(404).send('Not Found - ' + req.path + ' (server running)');
+    if (req.path.startsWith('/api/')) {
+        res.status(404).json({ ok: false, error: 'Unknown API endpoint' });
+    } else {
+        res.status(404).sendFile(path.join(__dirname, '404.html'));
+    }
 });
 
 app.listen(PORT, '0.0.0.0', () => {

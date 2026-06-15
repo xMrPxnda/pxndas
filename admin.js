@@ -710,11 +710,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // AI config — auto-save defaults if not configured yet
-        if (!localStorage.getItem('pxndas_ai_key')) {
-            // Try to fetch from server env
+        if (!localStorage.getItem('pxndas_ai_key') && !localStorage.getItem('pxndas_has_server_key')) {
             fetch('/api/config').then(r => r.json()).then(cfg => {
-                if (cfg.ok && cfg.aiKey) {
-                    localStorage.setItem('pxndas_ai_key', cfg.aiKey);
+                if (cfg.ok && cfg.hasAiKey) {
+                    localStorage.setItem('pxndas_has_server_key', 'true');
                     if (cfg.aiModel) localStorage.setItem('pxndas_ai_model', cfg.aiModel);
                     if (cfg.aiProvider) localStorage.setItem('pxndas_ai_provider', cfg.aiProvider);
                     loadSettings();
@@ -722,6 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(() => {});
         }
         const savedKey = localStorage.getItem('pxndas_ai_key') || '';
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
         const savedModel = localStorage.getItem('pxndas_ai_model') || 'openai/gpt-4o-mini';
         const savedProvider = localStorage.getItem('pxndas_ai_provider') || 'openrouter';
         const aiKeyInput = document.getElementById('aiApiKey');
@@ -732,8 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aiModelSelect) aiModelSelect.value = savedModel;
         if (aiProviderSelect) aiProviderSelect.value = savedProvider;
         if (aiStatus) {
-            aiStatus.textContent = savedKey ? 'Configured ✓' : 'Not configured';
-            aiStatus.style.color = savedKey ? 'var(--secondary)' : 'var(--neon-yellow)';
+            aiStatus.textContent = savedKey || hasServerKey ? 'Configured ✓' : 'Not configured';
+            aiStatus.style.color = savedKey || hasServerKey ? 'var(--secondary)' : 'var(--neon-yellow)';
         }
         // Switch model options based on provider
         if (aiProviderSelect && aiModelSelect) {

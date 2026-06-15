@@ -13,6 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let history = [];
 
+    // Auto-load AI config from server env
+    (function ensureAiConfig() {
+        if (!localStorage.getItem('pxndas_ai_key') && !localStorage.getItem('pxndas_has_server_key')) {
+            fetch('/api/config').then(r => r.json()).then(cfg => {
+                if (cfg.ok && cfg.hasAiKey) {
+                    localStorage.setItem('pxndas_has_server_key', 'true');
+                    if (cfg.aiModel) localStorage.setItem('pxndas_ai_model', cfg.aiModel);
+                    if (cfg.aiProvider) localStorage.setItem('pxndas_ai_provider', cfg.aiProvider);
+                    updateHeader();
+                }
+            }).catch(() => {});
+        }
+    })();
+
     // --- Store data snapshot ---
     const storeData = () => {
         const accounts = Security.secureStore.get('store_accounts') || [];
@@ -249,7 +263,8 @@ Modded accounts (money/rank/unlocks), Money drops, Rank unlocks, Recovery, Bundl
 
     // --- Proxy AI call ---
     const callProxyAI = async (query) => {
-        const apiKey = localStorage.getItem('pxndas_ai_key');
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
+        const apiKey = localStorage.getItem('pxndas_ai_key') || (hasServerKey ? '__server__' : '');
         const model = localStorage.getItem('pxndas_ai_model') || 'openai/gpt-4o-mini';
         const provider = localStorage.getItem('pxndas_ai_provider') || 'openrouter';
 
@@ -273,7 +288,7 @@ Modded accounts (money/rank/unlocks), Money drops, Rank unlocks, Recovery, Bundl
     // --- Toggle state ---
     const AI_TOGGLE_KEY = 'pxndas_ai_toggle';
     const isAiEnabled = () => {
-        const hasKey = !!localStorage.getItem('pxndas_ai_key');
+        const hasKey = !!localStorage.getItem('pxndas_ai_key') || localStorage.getItem('pxndas_has_server_key') === 'true';
         const pref = localStorage.getItem(AI_TOGGLE_KEY);
         if (pref === null) return hasKey;
         return pref === 'true' && hasKey;
@@ -282,12 +297,13 @@ Modded accounts (money/rank/unlocks), Money drops, Rank unlocks, Recovery, Bundl
     // --- Update header mode ---
     const updateHeader = () => {
         const key = localStorage.getItem('pxndas_ai_key');
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
         const model = localStorage.getItem('pxndas_ai_model') || '';
         const short = model.split('/').pop() || model;
         const toggle = document.getElementById('supportAiToggle');
         const enabled = isAiEnabled();
         if (toggle) toggle.checked = enabled;
-        if (key && enabled && headerLabel) {
+        if ((key || hasServerKey) && enabled && headerLabel) {
             headerLabel.textContent = short.toUpperCase();
             if (titleSub) titleSub.textContent = 'AI powered';
         } else {
@@ -320,9 +336,10 @@ Modded accounts (money/rank/unlocks), Money drops, Rank unlocks, Recovery, Bundl
         showTyping();
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
+        const hasServerKey = localStorage.getItem('pxndas_has_server_key') === 'true';
 
         try {
-            if (apiKey && isAiEnabled()) {
+            if ((apiKey || hasServerKey) && isAiEnabled()) {
                 const response = await callProxyAI(text);
                 removeTyping();
 

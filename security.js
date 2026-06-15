@@ -156,7 +156,7 @@ const Security = (() => {
                     localStorage.removeItem(BAK_PREFIX + k);
                 });
             }
-            const safe = ['theme', 'pxndas_ai_key', 'pxndas_ai_model', 'pxndas_ai_provider'];
+            const safe = ['theme', 'pxndas_ai_key', 'pxndas_ai_model', 'pxndas_ai_provider', 'pxndas_has_server_key'];
             const keep = new Set(safe);
             Object.keys(localStorage).forEach(k => {
                 if (!keep.has(k) && !k.startsWith(BAK_PREFIX)) localStorage.removeItem(k);
