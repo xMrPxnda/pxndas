@@ -77,12 +77,12 @@ app.use((req, res, next) => {
     if (!req.path.startsWith('/api/')) {
         res.setHeader('Content-Security-Policy',
             "default-src 'self'; " +
-            "script-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.paypal.com 'unsafe-inline' 'unsafe-eval'; " +
+            "script-src 'self' https://www.paypal.com https://www.paypalobjects.com https://fonts.googleapis.com https://fonts.gstatic.com 'unsafe-inline' 'unsafe-eval'; " +
             "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
             "font-src 'self' https://fonts.gstatic.com; " +
             "img-src 'self' data: https://www.paypal.com; " +
             "frame-src https://www.paypal.com; " +
-            "connect-src 'self' https://openrouter.ai https://api.openai.com; " +
+            "connect-src 'self' https://www.paypal.com https://openrouter.ai https://api.openai.com; " +
             "form-action 'self';"
         );
     }
@@ -450,6 +450,12 @@ app.use((req, res) => {
     } else {
         res.status(404).sendFile(path.join(__dirname, '404.html'));
     }
+});
+
+// Generic error handler (prevents stack trace leakage)
+app.use((err, req, res, next) => {
+    console.error('Server error:', err.message);
+    res.status(500).json({ ok: false, error: 'Internal server error' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
