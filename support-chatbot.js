@@ -68,15 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return safe;
     };
 
-    // --- Build system prompt for AI ---
-    const buildPrompt = () => {
-        const data = storeData();
-        const listings = data.accounts.map(a => `- ${a.title} ($${a.price}) — ${a.category}`).join('\n') || 'No accounts listed yet.';
-
-    let history = [];
-    let lastToolResult = '';
-
     // --- Tools ---
+    let lastToolResult = '';
     const tools = {
         list_accounts: {
             desc: 'Show all available GTA accounts with prices and categories.',
