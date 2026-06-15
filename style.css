@@ -238,6 +238,10 @@ nav {
 
 .cart-wrapper:hover #cart-count { transform: scale(1.15); }
 
+/* Mobile nav toggle (hamburger) */
+.nav-toggle { display: none; }
+.nav-hamburger { display: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); user-select: none; padding: 0.5rem; }
+
 #hero {
     max-width: 1200px;
     margin: 4rem auto;
@@ -1428,13 +1432,14 @@ footer {
 .form-group input:focus, .form-group textarea:focus { border-color: var(--neon-blue); box-shadow: 0 0 12px rgba(0, 255, 255, 0.1); }
 .form-group textarea { min-height: 100px; resize: vertical; }
 
-/* Responsive */
+/* Responsive — Tablet */
 @media (max-width: 968px) {
     #hero { grid-template-columns: 1fr; text-align: center; min-height: auto; gap: 2rem; }
     .hero-content h1 { font-size: 3rem; }
     .hero-content p { margin: 0 auto 2rem; }
     .hero-visual { height: 250px; }
     .floating-card { width: 100px; height: 100px; font-size: 2.5rem; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
     .footer-grid { grid-template-columns: 1fr 1fr; }
     .checkout-grid { grid-template-columns: 1fr; }
     .post-card { grid-template-columns: 1fr; gap: 1rem; }
@@ -1444,6 +1449,109 @@ footer {
     .digital-time { font-size: 2.8rem; }
     .detail-layout { flex-direction: column; min-height: 0; }
     .detail-image { width: 100%; height: 260px; }
+    #gear-clock-container { width: 400px; height: 400px; }
+    .g1 { width: 320px; height: 320px; }
+    .g2 { width: 200px; height: 200px; }
+    .g3 { width: 130px; height: 130px; }
+
+    /* Detail overlay */
+    .pd-body { flex-direction: column; padding: 2rem; gap: 2rem; }
+    .pd-right { min-width: 0; }
+    .pd-purchase-card { position: static; }
+    .pd-hero { height: 45vh; min-height: 300px; }
+    .pd-title { font-size: 2.4rem; }
+    .pd-price-lg { font-size: 2rem; }
+    .pd-features { grid-template-columns: 1fr; }
+    .pd-gallery-strip { padding: 1rem 2rem 2rem; }
+}
+
+/* Responsive — Mobile Hamburger & Layout */
+@media (max-width: 768px) {
+    nav { flex-wrap: wrap; gap: 0.5rem; padding: 0 1rem; }
+    .nav-hamburger { display: block; order: 3; }
+    .nav-links {
+        display: none; flex-direction: column; width: 100%; gap: 0;
+        background: rgba(5, 5, 8, 0.96); backdrop-filter: blur(20px);
+        padding: 0; border-radius: 0 0 12px 12px; overflow: hidden;
+        order: 4; border: 1px solid rgba(0, 255, 255, 0.1); border-top: none;
+    }
+    .nav-links li { width: 100%; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .nav-links li:last-child { border-bottom: none; }
+    .nav-links a, .nav-links button { display: block; width: 100%; padding: 0.9rem 1.2rem; text-align: left; font-size: 0.8rem; }
+    .nav-links button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+    .nav-toggle:checked + .nav-hamburger + .nav-links,
+    .nav-toggle:checked ~ .nav-links { display: flex; }
+    .cart-wrapper { order: 5; }
+    .logo { font-size: 1.2rem; order: 1; }
+    .search-container { order: 2; flex: 1; min-width: 0; }
+    .search-container input { width: 100%; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+    .search-container input:focus { width: 100%; }
+    #products { margin: 4rem auto; padding: 0 1rem; }
+    .section-header h2 { font-size: 1.8rem; }
+    .filter-btn { padding: 0.5rem 1rem; font-size: 0.7rem; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+    .card-image { height: 140px; }
+    .product-card { border-radius: 12px; }
+    .price { font-size: 1.2rem; }
+    footer { padding: 3rem 1.5rem 2rem; margin-top: 3rem; }
+    .footer-grid { gap: 2rem; }
+    #live-chat-panel { width: 320px; height: 440px; bottom: 80px; left: 10px; }
+    #support-chat-panel { width: 320px; height: 440px; bottom: 135px; left: 10px; }
+    #support-btn { width: 46px; height: 46px; bottom: 15px; left: 10px; }
+    #support-chat-toggle { width: 44px; height: 44px; bottom: 72px; left: 10px; font-size: 1.2rem; }
+}
+
+@media (max-width: 640px) {
+    .nav-links a, .nav-links button { font-size: 0.75rem; padding: 0.8rem 1rem; }
+    .hero-content h1 { font-size: 2.2rem; }
+    .hero-content p { font-size: 0.85rem; }
+    .hero-buttons .btn { font-size: 0.8rem; padding: 0.6rem 1.2rem; }
+    .product-grid { grid-template-columns: 1fr; gap: 1.2rem; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .digital-time { font-size: 2rem; }
+    .date-display { font-size: 0.8rem; letter-spacing: 3px; }
+    #gear-clock-container { width: 300px; height: 300px; }
+    .g1 { width: 240px; height: 240px; }
+    .g2 { width: 150px; height: 150px; }
+    .g3 { width: 90px; height: 90px; }
+    #support-btn { width: 40px; height: 40px; bottom: 12px; left: 10px; }
+    #support-chat-toggle { width: 38px; height: 38px; bottom: 65px; left: 10px; font-size: 1rem; }
+    #support-chat-panel { width: calc(100vw - 20px); height: 400px; bottom: 115px; left: 10px; }
+    #live-chat-panel { width: calc(100vw - 20px); height: 400px; bottom: 80px; left: 10px; }
+    .modal-content { margin: 5% auto; padding: 1.2rem; }
+    .checkout-content { padding: 1.2rem; }
+    .pd-header { padding: 0.7rem 1rem; }
+    #pdBackBtn { font-size: 0.7rem; padding: 0.4rem 0.8rem; }
+    .pd-hero { height: 30vh; min-height: 220px; }
+    .pd-hero-content { padding: 1.2rem; }
+    .pd-title { font-size: 1.5rem; }
+    .pd-price-lg { font-size: 1.3rem; }
+    .pd-body { padding: 1.2rem; gap: 1.2rem; }
+    .pd-current-price { font-size: 1.8rem; }
+    .pd-purchase-card { padding: 1.2rem; }
+    .pd-trust { gap: 0.6rem; }
+    .pd-trust-item { font-size: 0.55rem; }
+    .pd-gallery-strip { padding: 0.8rem 1rem 1rem; grid-template-columns: 1fr; gap: 0.6rem; }
+    .pd-gallery-strip img { border-radius: 8px; }
+}
+
+@media (max-width: 400px) {
+    nav { padding: 0 0.5rem; }
+    .logo { font-size: 1rem; }
+    .search-container input { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+    .hero-content h1 { font-size: 1.8rem; }
+    .hero-content p { font-size: 0.8rem; }
+    #products { padding: 0 0.5rem; }
+    .product-grid { gap: 0.8rem; }
+    .card-image { height: 120px; }
+    .section-header h2 { font-size: 1.4rem; }
+    .filter-btn { padding: 0.4rem 0.8rem; font-size: 0.65rem; }
+    #gear-clock-container { width: 220px; height: 220px; }
+    .g1 { width: 180px; height: 180px; }
+    .g2 { width: 110px; height: 110px; }
+    .g3 { width: 70px; height: 70px; }
+    #live-chat-panel, #support-chat-panel { width: calc(100vw - 12px); left: 6px; }
+    #support-btn { left: 6px; }
 }
 
 /* ─── Product Detail Overlay ─── */
@@ -1582,12 +1690,6 @@ footer {
     max-height: 500px;
     object-fit: contain;
     background: radial-gradient(circle at 30% 30%, rgba(0, 255, 255, 0.04) 0%, transparent 70%);
-}
-@media (max-width: 968px) {
-    .pd-gallery-strip { padding: 1rem 2rem 2rem; }
-}
-@media (max-width: 640px) {
-    .pd-gallery-strip { padding: 1rem 1.5rem 1.5rem; grid-template-columns: 1fr; gap: 0.8rem; }
 }
 .pd-hero-content {
     position: absolute;
@@ -1860,41 +1962,3 @@ footer {
     letter-spacing: 0.5px;
 }
 .pd-trust-item span { font-size: 0.9rem; }
-
-/* ─── Responsive ─── */
-@media (max-width: 968px) {
-    .pd-body { flex-direction: column; padding: 2rem; gap: 2rem; }
-    .pd-right { min-width: 0; }
-    .pd-purchase-card { position: static; }
-    .pd-hero { height: 45vh; min-height: 300px; }
-    .pd-title { font-size: 2.4rem; }
-    .pd-price-lg { font-size: 2rem; }
-    .pd-features { grid-template-columns: 1fr; }
-}
-@media (max-width: 640px) {
-    .nav-links { gap: 1rem; }
-    .nav-links a { font-size: 0.75rem; }
-    .hero-content h1 { font-size: 2.2rem; }
-    .product-grid { grid-template-columns: 1fr; }
-    .footer-grid { grid-template-columns: 1fr; }
-    #support-btn { width: 46px; height: 46px; bottom: 15px; left: 15px; }
-    #support-chat-toggle { width: 44px; height: 44px; bottom: 78px; left: 15px; font-size: 1.2rem; }
-    #support-chat-panel { width: 320px; height: 440px; bottom: 130px; left: 15px; }
-    .support-icon { font-size: 1.1rem; }
-    .modal-content { margin: 10% auto; padding: 1.5rem; }
-    .pd-header { padding: 0.7rem 1rem; }
-    #pdBackBtn { font-size: 0.7rem; padding: 0.4rem 0.8rem; }
-    .pd-hero { height: 35vh; min-height: 250px; }
-    .pd-hero-content { padding: 1.5rem; }
-    .pd-title { font-size: 1.8rem; }
-    .pd-price-lg { font-size: 1.5rem; }
-    .pd-body { padding: 1.5rem; }
-    .pd-current-price { font-size: 2.2rem; }
-    .pd-purchase-card { padding: 1.5rem; }
-    .pd-trust { gap: 0.8rem; }
-    .pd-trust-item { font-size: 0.6rem; }
-    #gear-clock-container { width: 350px; height: 350px; }
-    .g1 { width: 280px; height: 280px; }
-    .g2 { width: 160px; height: 160px; }
-    .g3 { width: 100px; height: 100px; }
-}

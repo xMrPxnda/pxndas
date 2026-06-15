@@ -1425,11 +1425,6 @@ tr:hover td { background: rgba(0, 255, 255, 0.02); }
     50% { opacity: 1; }
 }
 
-@keyframes msgSlide {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 .live-chat-empty {
     text-align: center;
     color: var(--text-muted);
@@ -1536,6 +1531,60 @@ tr:hover td { background: rgba(0, 255, 255, 0.02); }
     border-color: var(--neon-blue) !important;
     color: var(--neon-blue) !important;
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.15) !important;
+}
+
+/* Responsive — Admin Mobile */
+@media (max-width: 1024px) {
+    .sidebar { width: 60px; overflow: hidden; }
+    .sidebar-header .logo { font-size: 0; }
+    .sidebar-header .logo::before { content: 'P'; font-size: 1.4rem; }
+    .sidebar-nav a span:not(.icon) { display: none; }
+    .sidebar-nav li { text-align: center; }
+    .sidebar-nav li .icon { margin: 0; }
+    .admin-main { padding: 1.5rem; margin-left: 60px; }
+    .stats-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+}
+
+@media (max-width: 768px) {
+    .sidebar { width: 0; overflow: hidden; padding: 0; }
+    .sidebar-header, .sidebar-nav { opacity: 0; pointer-events: none; }
+    .admin-container { grid-template-columns: 1fr; }
+    .admin-main { margin-left: 0; padding: 1rem; }
+    .tab-content { padding: 1rem; }
+    .stats-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.8rem; }
+    .stat-card { padding: 1rem; }
+    .stat-card h3 { font-size: 0.8rem; }
+    .stat-number { font-size: 1.4rem; }
+    .card-table { font-size: 0.75rem; }
+    .card-table th, .card-table td { padding: 0.5rem; }
+    .form-row { flex-direction: column; gap: 0.8rem; }
+    .settings-grid { grid-template-columns: 1fr; }
+    .settings-card { padding: 1rem; }
+    .ai-controls { flex-direction: column; }
+    .ai-controls select, .ai-controls input { width: 100% !important; }
+    #chat-panel { width: calc(100vw - 20px); height: 50vh; bottom: 80px; right: 10px; }
+    #chat-toggle { width: 50px; height: 50px; bottom: 15px; right: 15px; }
+    .live-chat-wrap { flex-direction: column; min-height: auto; }
+    .live-chat-sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(0,255,255,0.1); }
+    .smtp-grid { grid-template-columns: 1fr !important; }
+    .admin-form-container { padding: 1rem; }
+    .product-form-grid { grid-template-columns: 1fr; }
+    .image-upload-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .admin-main { padding: 0.5rem; }
+    .tab-content { padding: 0.5rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .stat-card { padding: 0.8rem; }
+    .stat-number { font-size: 1.2rem; }
+    .card-table { font-size: 0.7rem; }
+    .card-table th, .card-table td { padding: 0.4rem; }
+    h2 { font-size: 1.2rem; }
+    .btn { font-size: 0.75rem; padding: 0.5rem 0.8rem; }
+    .btn-sm { font-size: 0.65rem; padding: 0.4rem 0.6rem; }
+    #chat-panel { width: calc(100vw - 10px); height: 60vh; right: 5px; bottom: 75px; }
+    #chat-toggle { width: 44px; height: 44px; bottom: 10px; right: 10px; font-size: 1.2rem; }
 }
 
 @keyframes msgSlide {
