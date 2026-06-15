@@ -54,13 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const tools = {
+        // ─── ACCOUNTS ───
         add_account: {
             desc: 'Add a new GTA account listing to the store.',
             args: {
                 title: 'string (required) — listing title',
                 price: 'number (required) — price in USD',
                 category: 'string (required) — e.g. Modded, Money, Rank, Recovery, Bundles, Other',
-                description: 'string (optional) — account details (stats, unlocks, delivery method)'
+                description: 'string (optional) — account details (stats, unlocks, delivery method)',
+                stock: 'number (optional) — quantity available (default 1)'
             },
             execute: args => {
                 if (!args.title || !args.price) return { error: 'title and price are required' };
@@ -69,12 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: Date.now(),
                     title: args.title,
                     price: args.price,
-                    category: args.category || 'other',
+                    category: args.category || 'Other',
                     description: args.description || '',
-                    image: '',
+                    stock: args.stock || 1,
+                    icon: '📦',
+                    images: [],
                     date: new Date().toISOString().split('T')[0]
                 };
-                accounts.push(newAccount);
+                accounts.unshift(newAccount);
                 Security.secureStore.set('store_accounts', accounts);
                 Security.auditLog('AI_ADD_ACCOUNT', { title: args.title, price: args.price });
                 return { success: true, message: `Added "${args.title}" for $${args.price}`, id: newAccount.id };
@@ -87,16 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'string (optional) — new title',
                 price: 'number (optional) — new price',
                 category: 'string (optional) — new category',
-                description: 'string (optional) — new description'
+                description: 'string (optional) — new description',
+                stock: 'number (optional) — new stock quantity'
             },
             execute: args => {
                 const accounts = Security.secureStore.get('store_accounts') || [];
                 const idx = accounts.findIndex(a => a.id === args.id || a.id == args.id);
-                if (idx === -1) return { error: `Account with id ${args.id} not found` };
+                if (idx === -1) return { error: `Account with id ${args.id} not found. Use list_accounts to find IDs.` };
                 if (args.title !== undefined) accounts[idx].title = args.title;
                 if (args.price !== undefined) accounts[idx].price = args.price;
                 if (args.category !== undefined) accounts[idx].category = args.category;
                 if (args.description !== undefined) accounts[idx].description = args.description;
+                if (args.stock !== undefined) accounts[idx].stock = args.stock;
                 Security.secureStore.set('store_accounts', accounts);
                 Security.auditLog('AI_EDIT_ACCOUNT', { id: args.id });
                 return { success: true, message: `Updated account #${args.id}` };
@@ -109,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
             execute: args => {
                 const accounts = Security.secureStore.get('store_accounts') || [];
                 const idx = accounts.findIndex(a => a.id === args.id || a.id == args.id);
-                if (idx === -1) return { error: `Account with id ${args.id} not found` };
+                if (idx === -1) return { error: `Account with id ${args.id} not found.` };
                 const removed = accounts.splice(idx, 1)[0];
                 Security.secureStore.set('store_accounts', accounts);
                 Security.auditLog('AI_DELETE_ACCOUNT', { id: args.id, title: removed.title });
@@ -117,25 +123,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         list_accounts: {
-            desc: 'Get a detailed list of all GTA account listings with IDs, prices, and categories.',
-            args: {},
-            execute: () => {
+            desc: 'List all GTA account listings with IDs, prices, categories, and stock.',
+            args: { category: 'string (optional) — filter by category' },
+            execute: args => {
                 const accounts = Security.secureStore.get('store_accounts') || [];
-                if (!accounts.length) return { success: true, message: 'No listings yet.' };
-                const lines = accounts.map(a => `#${a.id} — ${a.title} ($${a.price}) [${a.category}]`);
+                let filtered = accounts;
+                if (args.category) filtered = accounts.filter(a => a.category?.toLowerCase() === args.category.toLowerCase());
+                if (!filtered.length) return { success: true, message: 'No accounts found.' };
+                const lines = filtered.map(a => `#${a.id} — ${a.title} ($${a.price}) [${a.category}] stock: ${a.stock || 1}`);
                 return { success: true, message: lines.join('\n') };
             }
         },
+        get_account: {
+            desc: 'Get full details of a single account listing by ID.',
+            args: { id: 'number (required) — account ID' },
+            execute: args => {
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                const a = accounts.find(a => a.id === args.id || a.id == args.id);
+                if (!a) return { error: `Account #${args.id} not found.` };
+                return { success: true, message: `#${a.id} — ${a.title}\nPrice: $${a.price}\nCategory: ${a.category}\nStock: ${a.stock || 1}\nDescription: ${a.description || 'N/A'}\nImages: ${(a.images || []).length || (a.image ? 1 : 0)}` };
+            }
+        },
+        update_stock: {
+            desc: 'Update the stock quantity of an account listing.',
+            args: { id: 'number (required) — account ID', stock: 'number (required) — new stock quantity (0 = out of stock)' },
+            execute: args => {
+                const accounts = Security.secureStore.get('store_accounts') || [];
+                const idx = accounts.findIndex(a => a.id === args.id || a.id == args.id);
+                if (idx === -1) return { error: `Account #${args.id} not found.` };
+                accounts[idx].stock = Math.max(0, parseInt(args.stock) || 0);
+                Security.secureStore.set('store_accounts', accounts);
+                Security.auditLog('AI_UPDATE_STOCK', { id: args.id, stock: accounts[idx].stock });
+                return { success: true, message: `Stock for #${args.id} set to ${accounts[idx].stock}` };
+            }
+        },
+
+        // ─── POSTS ───
         add_post: {
             desc: 'Add a post to the feed (announcements/news).',
-            args: {
-                title: 'string (required) — post title',
-                content: 'string (required) — post content/body'
-            },
+            args: { title: 'string (required) — post title', content: 'string (required) — post body/content' },
             execute: args => {
                 if (!args.title || !args.content) return { error: 'title and content are required' };
                 const posts = Security.secureStore.get('pxnda_posts') || [];
-                posts.push({
+                posts.unshift({
                     id: Date.now(),
                     title: args.title,
                     content: args.content,
@@ -146,6 +176,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { success: true, message: `Posted "${args.title}" to feed` };
             }
         },
+        edit_post: {
+            desc: 'Edit a feed post title and/or content by ID.',
+            args: {
+                id: 'number (required) — post ID to edit',
+                title: 'string (optional) — new title',
+                content: 'string (optional) — new content'
+            },
+            execute: args => {
+                const posts = Security.secureStore.get('pxnda_posts') || [];
+                const idx = posts.findIndex(p => p.id === args.id || p.id == args.id);
+                if (idx === -1) return { error: `Post with id ${args.id} not found.` };
+                if (args.title !== undefined) posts[idx].title = args.title;
+                if (args.content !== undefined) posts[idx].content = args.content;
+                Security.secureStore.set('pxnda_posts', posts);
+                Security.auditLog('AI_EDIT_POST', { id: args.id });
+                return { success: true, message: `Updated post #${args.id}` };
+            }
+        },
         delete_post: {
             desc: 'Delete a feed post by ID.',
             args: { id: 'number (required) — post ID to delete' },
@@ -153,16 +201,28 @@ document.addEventListener('DOMContentLoaded', () => {
             execute: args => {
                 const posts = Security.secureStore.get('pxnda_posts') || [];
                 const idx = posts.findIndex(p => p.id === args.id || p.id == args.id);
-                if (idx === -1) return { error: `Post with id ${args.id} not found` };
+                if (idx === -1) return { error: `Post with id ${args.id} not found.` };
                 const removed = posts.splice(idx, 1)[0];
                 Security.secureStore.set('pxnda_posts', posts);
                 Security.auditLog('AI_DELETE_POST', { id: args.id, title: removed.title });
                 return { success: true, message: `Deleted post "${removed.title}"` };
             }
         },
+        list_posts: {
+            desc: 'List all feed posts with IDs, titles, dates, and content preview.',
+            args: {},
+            execute: () => {
+                const posts = Security.secureStore.get('pxnda_posts') || [];
+                if (!posts.length) return { success: true, message: 'No posts yet.' };
+                const lines = posts.map(p => `#${p.id} — ${p.title} (${p.date})\n   ${(p.content || '').substring(0, 100)}`);
+                return { success: true, message: lines.join('\n') };
+            }
+        },
+
+        // ─── ORDERS ───
         view_orders: {
-            desc: 'View all orders with details (status, total, items, date).',
-            args: { status: 'string (optional) — filter by status: PAID, PENDING, or all' },
+            desc: 'View orders with optional status filter.',
+            args: { status: 'string (optional) — filter: PAID, PENDING, CANCELLED, or all' },
             execute: args => {
                 const requests = Security.secureStore.get('service_requests') || [];
                 let filtered = requests;
@@ -172,26 +232,117 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!filtered.length) return { success: true, message: 'No orders found.' };
                 const lines = filtered.map(r => {
                     const date = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : 'N/A';
-                    return `#${r.id || '?'} — $${r.total || '0'} — ${r.status || '?'} — ${r.items || 0} items — ${date}`;
+                    return `#${r.id || '?'} — $${r.total || '0'} — ${r.status || '?'} — ${r.items || 0} items — ${r.email || 'N/A'} — ${date}`;
                 });
                 return { success: true, message: lines.join('\n') };
             }
         },
+        update_order_status: {
+            desc: 'Update the status of an order by ID.',
+            args: { id: 'number (required) — order ID', status: 'string (required) — new status: PAID, PENDING, CANCELLED, DELIVERED' },
+            confirm: true,
+            execute: args => {
+                const requests = Security.secureStore.get('service_requests') || [];
+                const idx = requests.findIndex(r => r.id === args.id || r.id == args.id);
+                if (idx === -1) return { error: `Order #${args.id} not found.` };
+                const valid = ['PAID', 'PENDING', 'CANCELLED', 'DELIVERED'];
+                if (!valid.includes(args.status.toUpperCase())) return { error: `Status must be: ${valid.join(', ')}` };
+                requests[idx].status = args.status.toUpperCase();
+                Security.secureStore.set('service_requests', requests);
+                Security.auditLog('AI_UPDATE_ORDER', { id: args.id, status: args.status.toUpperCase() });
+                return { success: true, message: `Order #${args.id} set to ${args.status.toUpperCase()}` };
+            }
+        },
+        delete_order: {
+            desc: 'Delete an order by ID.',
+            args: { id: 'number (required) — order ID to delete' },
+            confirm: true,
+            execute: args => {
+                const requests = Security.secureStore.get('service_requests') || [];
+                const idx = requests.findIndex(r => r.id === args.id || r.id == args.id);
+                if (idx === -1) return { error: `Order #${args.id} not found.` };
+                const removed = requests.splice(idx, 1)[0];
+                Security.secureStore.set('service_requests', requests);
+                Security.auditLog('AI_DELETE_ORDER', { id: args.id });
+                return { success: true, message: `Deleted order #${args.id} (${removed.status})` };
+            }
+        },
+        clear_orders: {
+            desc: 'Delete all completed (PAID) orders.',
+            args: {},
+            confirm: true,
+            execute: () => {
+                const requests = Security.secureStore.get('service_requests') || [];
+                const remaining = requests.filter(r => r.status !== 'PAID');
+                const count = requests.length - remaining.length;
+                Security.secureStore.set('service_requests', remaining);
+                Security.auditLog('AI_CLEAR_ORDERS', { count });
+                return { success: true, message: `Cleared ${count} completed order(s)` };
+            }
+        },
+
+        // ─── USERS ───
         view_users: {
-            desc: 'View all registered users with usernames and join dates.',
+            desc: 'View all registered users with usernames, roles, and join dates.',
             args: {},
             execute: () => {
                 const users = Security.secureStore.get('pxndas_users') || [];
                 if (!users.length) return { success: true, message: 'No users yet.' };
-                const lines = users.map(u => `${u.username} (${u.role || 'user'}) — joined ${new Date(u.created).toLocaleDateString()}`);
+                const lines = users.map(u => `@${u.username} (${u.role || 'user'}) — joined ${new Date(u.created).toLocaleDateString()}${u.email ? ' — ' + u.email : ''}`);
                 return { success: true, message: lines.join('\n') };
             }
         },
+
+        // ─── SUPPORT TICKETS ───
+        list_tickets: {
+            desc: 'List all support tickets with status, subject, and date.',
+            args: { status: 'string (optional) — filter: OPEN, CLOSED, or all' },
+            execute: args => {
+                const tickets = Security.secureStore.get('support_tickets') || [];
+                let filtered = tickets;
+                if (args.status && args.status.toUpperCase() !== 'ALL') {
+                    filtered = tickets.filter(t => t.status === args.status.toUpperCase());
+                }
+                if (!filtered.length) return { success: true, message: 'No tickets found.' };
+                const lines = filtered.map((t, i) => `#${i} — ${t.subject || 'No subject'} — ${t.status || 'OPEN'} — ${t.user || '?'} — ${t.date || ''}`);
+                return { success: true, message: lines.join('\n') };
+            }
+        },
+        reply_ticket: {
+            desc: 'Reply to a support ticket by index.',
+            args: { id: 'number (required) — ticket index number', message: 'string (required) — reply text' },
+            execute: args => {
+                const tickets = Security.secureStore.get('support_tickets') || [];
+                const idx = parseInt(args.id);
+                if (isNaN(idx) || idx < 0 || idx >= tickets.length) return { error: `Ticket #${args.id} not found.` };
+                if (!tickets[idx].replies) tickets[idx].replies = [];
+                tickets[idx].replies.push({ text: args.message, sender: 'admin', date: new Date().toLocaleString() });
+                Security.secureStore.set('support_tickets', tickets);
+                Security.auditLog('AI_REPLY_TICKET', { id: args.id });
+                return { success: true, message: `Replied to ticket #${args.id}` };
+            }
+        },
+        close_ticket: {
+            desc: 'Close a support ticket by index.',
+            args: { id: 'number (required) — ticket index number' },
+            confirm: true,
+            execute: args => {
+                const tickets = Security.secureStore.get('support_tickets') || [];
+                const idx = parseInt(args.id);
+                if (isNaN(idx) || idx < 0 || idx >= tickets.length) return { error: `Ticket #${args.id} not found.` };
+                tickets[idx].status = 'CLOSED';
+                Security.secureStore.set('support_tickets', tickets);
+                Security.auditLog('AI_CLOSE_TICKET', { id: args.id });
+                return { success: true, message: `Closed ticket #${args.id}` };
+            }
+        },
+
+        // ─── SETTINGS ───
         update_setting: {
             desc: 'Update a site configuration setting.',
             args: {
                 key: 'string (required) — setting name: payment_mode, idle_timeout',
-                value: 'string (required) — new value (for payment_mode: "test" or "live", for idle_timeout: number in minutes)'
+                value: 'string (required) — new value (payment_mode: "test" or "live", idle_timeout: minutes)'
             },
             execute: args => {
                 if (args.key === 'payment_mode') {
@@ -218,17 +369,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { error: `Unknown setting "${args.key}". Available: payment_mode, idle_timeout` };
             }
         },
-        clear_orders: {
-            desc: 'Delete all completed (PAID) orders.',
+
+        // ─── DATA ───
+        view_revenue: {
+            desc: 'View total revenue, paid orders count, and recent transactions.',
             args: {},
-            confirm: true,
             execute: () => {
                 const requests = Security.secureStore.get('service_requests') || [];
-                const remaining = requests.filter(r => r.status !== 'PAID');
-                const count = requests.length - remaining.length;
-                Security.secureStore.set('service_requests', remaining);
-                Security.auditLog('AI_CLEAR_ORDERS', { count });
-                return { success: true, message: `Cleared ${count} completed order(s)` };
+                const paid = requests.filter(r => r.status === 'PAID');
+                const revenue = paid.reduce((s, r) => s + parseFloat((r.total || '').replace('$', '') || 0), 0);
+                const recent = paid.slice(-3).map(r => `  $${r.total} — ${r.email || '?'} — ${r.timestamp ? new Date(r.timestamp).toLocaleDateString() : ''}`);
+                return { success: true, message: `💰 Total Revenue: $${revenue.toFixed(2)}\nPaid Orders: ${paid.length}\n\nRecent:\n${recent.join('\n') || '  No paid orders yet'}` };
+            }
+        },
+        view_audit: {
+            desc: 'View recent activity log entries.',
+            args: { limit: 'number (optional) — how many entries to show (default 10)' },
+            execute: args => {
+                const audit = Security.secureStore.get('pxndas_audit_log') || [];
+                const limit = Math.min(parseInt(args.limit) || 10, 50);
+                if (!audit.length) return { success: true, message: 'No activity logged yet.' };
+                const lines = audit.slice(-limit).map(e => `${new Date(e.timestamp).toLocaleString()} — ${e.event}${e.details ? ' — ' + JSON.stringify(e.details) : ''}`);
+                return { success: true, message: lines.join('\n') };
             }
         },
         clear_audit: {
@@ -239,6 +401,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 Security.secureStore.remove('pxndas_audit_log');
                 Security.auditLog('AI_CLEAR_AUDIT', {});
                 return { success: true, message: 'Audit log cleared' };
+            }
+        },
+        clear_data: {
+            desc: 'Factory reset all store data (accounts, posts, orders, users, tickets, audit).',
+            args: {},
+            confirm: true,
+            execute: () => {
+                Security.secureStore.clear();
+                Security.auditLog('AI_CLEAR_ALL_DATA', {});
+                return { success: true, message: 'All store data has been reset.' };
             }
         }
     };
@@ -322,12 +494,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Build system prompt with tools ---
     const buildPrompt = () => {
         const data = storeData();
-        const toolDescs = Object.entries(tools).map(([name, t]) => {
+        const toolLines = Object.entries(tools).map(([name, t]) => {
             const args = Object.entries(t.args).map(([k, v]) => `  - ${k}: ${v}`).join('\n');
             return `${name}: ${t.desc}${t.confirm ? ' [REQUIRES CONFIRMATION]' : ''}\nArgs:\n${args}`;
         }).join('\n\n');
 
-        return `You are Pxnda AI, the AI assistant for pxndas — a GTA V / GTA Online account marketplace. You have full access to live store data and can make changes using the tool system.
+        return `You are Pxnda AI, the all-powerful AI assistant for pxndas — a GTA V / GTA Online account marketplace. You have FULL control over the entire store. You can view, add, edit, delete anything using your tools.
 
 ## Current Store State
 - Registered users: ${data.users.length}
@@ -339,32 +511,48 @@ document.addEventListener('DOMContentLoaded', () => {
 - Payment mode: ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}
 
 ## Available Tools
-You can perform actions by including a tool call block in your response. The block will be detected and executed automatically.
+You have these tools at your disposal. Include a tool block in your response to execute actions.
 
-Format:
-\`\`\`
+Format (exact JSON in the block):
 {tool:tool_name}{"arg1":"value1","arg2":"value2"}{/tool}
-\`\`\`
 
-${toolDescs}
+${toolLines}
 
-## IMPORTANT RULES
-1. When the admin asks you to DO something (add/edit/delete/change), include the appropriate tool block in your response.
-2. Always explain what you're doing before the tool block.
-3. If admin asks to see data (listings, orders, users), use the appropriate tool or summarize from context.
-4. Destructive actions (delete, clear) require confirmation — just include the tool block and the system will prompt.
-5. Be concise but helpful.
-6. If admin asks to do something you can't do, explain what's possible.
-7. After a tool executes, the system will show the result. You can continue the conversation.
+## How to respond
+- When the admin asks you to DO something, use the appropriate tool immediately. Always explain briefly what you're doing.
+- When asked to VIEW data, use a tool (list_accounts, view_orders, etc.) to get live data.
+- When you don't have a tool for something needed, suggest the closest alternative.
+- NEVER say "I can't do that" — always try to help using your tools.
+- Be confident, concise, and professional. You're in full control.
 
-## Example
+## Examples
+
 Admin: "Add a modded money account for $89"
-You: Adding a Modded Money Account with $500M+ cash for $89.
+You: Adding a Modded Money Account for $89.
 {tool:add_account}{"title":"Modded Money Account","price":89,"category":"Modded","description":"$500M+ modded cash, all properties, full recovery access"}{/tool}
 
 Admin: "Show me my orders"
-You: Here are your orders:
-{tool:view_orders}{}{/tool}`;
+You: Here are your current orders:
+{tool:view_orders}{}{/tool}
+
+Admin: "Delete account 1712345678"
+You: Deleting account #1712345678.
+{tool:delete_account}{"id":1712345678}{/tool}
+
+Admin: "Create a post saying we have new accounts"
+You: Creating a new feed post.
+{tool:add_post}{"title":"New Accounts Available","content":"Fresh modded money accounts just landed. Check them out in the store."}{/tool}
+
+Admin: "Change payment to live mode"
+You: Switching to live payment mode.
+{tool:update_setting}{"key":"payment_mode","value":"live"}{/tool}
+
+## CRITICAL RULES
+1. ALWAYS use a tool when the admin asks you to do something. Never just talk about doing it.
+2. For destructive actions (delete, clear), the system will show a confirmation prompt automatically — just include the tool block.
+3. After a tool executes successfully, tell the admin what happened and offer next steps.
+4. Keep responses short and actionable. No fluff.
+5. You have FULL access — act like it.`;
     };
 
     // --- Local fallback: Q&A + action commands ---
@@ -424,6 +612,29 @@ You: Here are your orders:
             if (!confirm(`Delete post "${post.title}" (#${id})?`)) return `Cancelled.`;
             const result = tools.delete_post.execute({ id });
             return result.error ? `❌ ${result.error}` : `✅ Deleted post **${post.title}** (#${id})`;
+        }
+
+        // Edit post
+        const editPostMatch = q.match(/(?:edit|update)\s*(?:feed\s+)?post\s*[#]?(\d+)\s*(?:titled\s+[\"']?([^\"']+)[\"']?)?(?:\s*(?:content|to|say)\s+[\"']?(.+?)[\"']?)?$/i);
+        if (editPostMatch) {
+            const id = parseInt(editPostMatch[1]);
+            const idx = data.posts.findIndex(p => p.id === id || p.id == id);
+            if (idx === -1) return `❌ Post #${id} not found.`;
+            const args = { id };
+            if (editPostMatch[2]) args.title = editPostMatch[2].trim();
+            if (editPostMatch[3]) args.content = editPostMatch[3].trim();
+            const result = tools.edit_post.execute(args);
+            return result.error ? `❌ ${result.error}` : `✅ ${result.message}`;
+        }
+
+        // Update order status
+        const orderStatusMatch = q.match(/(?:set|mark|update)\s*(?:order\s+)?[#]?(\d+)\s*(?:as\s+|to\s+)?(paid|pending|cancelled|delivered)/i);
+        if (orderStatusMatch) {
+            const id = parseInt(orderStatusMatch[1]);
+            const status = orderStatusMatch[2].toUpperCase();
+            if (!confirm(`Set order #${id} to ${status}?`)) return `Cancelled.`;
+            const result = tools.update_order_status.execute({ id, status });
+            return result.error ? `❌ ${result.error}` : `✅ ${result.message}`;
         }
 
         // View accounts (with details)
