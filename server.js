@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const nodemailer = require('nodemailer');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -216,8 +217,54 @@ app.get('/api/config', (req, res) => {
         ok: true,
         hasAiKey: !!process.env.AI_API_KEY,
         aiModel: process.env.AI_MODEL || 'openai/gpt-4o-mini',
-        aiProvider: process.env.AI_PROVIDER || 'openrouter'
+        aiProvider: process.env.AI_PROVIDER || 'openrouter',
+        hasSmtp: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
     });
+});
+
+// --- Email Receipt API ---
+app.post('/api/send-receipt', rateLimit(10, 60000), async (req, res) => {
+    try {
+        const { email, orderId, items, total } = req.body;
+        if (!email || !orderId) {
+            return res.status(400).json({ ok: false, error: 'Missing email or orderId' });
+        }
+        const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_ADMIN_EMAIL } = process.env;
+        if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+            return res.status(400).json({ ok: false, error: 'SMTP not configured' });
+        }
+        const transporter = nodemailer.createTransport({
+            host: SMTP_HOST,
+            port: parseInt(SMTP_PORT || '587'),
+            secure: SMTP_PORT === '465',
+            auth: { user: SMTP_USER, pass: SMTP_PASS }
+        });
+        const from = SMTP_FROM || SMTP_USER;
+        const date = new Date().toLocaleString();
+
+        // Customer receipt
+        await transporter.sendMail({
+            from,
+            to: email,
+            subject: 'Purchase Confirmation — pxndas',
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;background:#0a0a1a;color:#c0c8d8;padding:2rem;margin:0}.card{max-width:560px;margin:auto;background:#12122a;border:1px solid rgba(0,255,255,0.2);border-radius:12px;padding:2rem;text-align:center}.logo{font-size:1.5rem;font-weight:800;color:#00ffff;letter-spacing:2px}.order-id{font-family:monospace;font-size:1.1rem;color:#ff0080;margin:0.5rem 0}.details{text-align:left;margin:1.5rem 0;padding:1rem;background:rgba(0,0,0,0.3);border-radius:8px}.details div{display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}.total{font-size:1.3rem;color:#00ffff;font-weight:700;margin-top:1rem}.footer{font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:2rem}hr{border:none;border-top:1px solid rgba(0,255,255,0.1)}</style></head><body><div class="card"><div class="logo">PXNDAS</div><p style="color:rgba(255,255,255,0.5);font-size:0.85rem;">Purchase Confirmation</p><hr><p>Thank you for your order.</p><div class="order-id">${orderId}</div><div class="details"><div><span>Items</span><span>${items}</span></div><div><span>Total</span><span class="total">${total}</span></div><div><span>Date</span><span>${date}</span></div></div><p style="font-size:0.85rem;">Your account details will be delivered to this email within 24 hours.</p><hr><div class="footer">pxndas — premium GTA accounts</div></div></body></html>`
+        });
+
+        // Admin notification
+        if (SMTP_ADMIN_EMAIL) {
+            await transporter.sendMail({
+                from,
+                to: SMTP_ADMIN_EMAIL,
+                subject: `New Order: ${orderId}`,
+                html: `<p><strong>New purchase</strong></p><p>Order: ${orderId}<br>Email: ${email}<br>Items: ${items}<br>Total: ${total}<br>Date: ${date}</p>`
+            });
+        }
+
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Email error:', e.message);
+        res.status(500).json({ ok: false, error: 'Failed to send email' });
+    }
 });
 
 // --- Data API (read is public, write requires same-origin) ---

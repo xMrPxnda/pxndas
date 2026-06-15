@@ -225,6 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         checkoutModal.style.display = 'none';
                         successModal.style.display = 'block';
                         document.getElementById('orderIdDisplay').textContent = orderId;
+                        // Send receipt email (fire and forget)
+                        fetch('/api/send-receipt', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, orderId, items, total })
+                        }).catch(() => {});
                     });
                 }
             }).render('#paypal-button-container');
@@ -252,6 +258,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     checkoutModal.style.display = 'none';
                     successModal.style.display = 'block';
                     document.getElementById('orderIdDisplay').textContent = orderId;
+                    // Send receipt email (fire and forget)
+                    fetch('/api/send-receipt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: 'test@pxndas.io', orderId, items, total })
+                    }).catch(() => {});
                 });
             }
         }
@@ -703,6 +715,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (chatClose) {
             chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+        }
+
+        // Footer "Contact Us" link opens live chat
+        const contactLink = document.getElementById('footer-contact-link');
+        if (contactLink && chatPanel) {
+            contactLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const session = Security.secureStore.get('pxndas_logged_in');
+                const prompt = document.getElementById('live-chat-login-prompt');
+                if (!session) {
+                    if (prompt) {
+                        prompt.style.display = 'flex';
+                        chatPanel.classList.add('open');
+                    } else {
+                        Security.toast.show('Log in to use live support.', 'warning');
+                    }
+                    return;
+                }
+                chatPanel.classList.add('open');
+                chatInput.focus();
+                loadLiveMessages(session.username);
+            });
         }
 
         // Send message
