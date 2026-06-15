@@ -853,7 +853,9 @@ Admin: "Switch to live payments" → {tool:update_setting}{"key":"payment_mode",
                     } catch (e) {
                         result = `Error: ${e.message}`;
                     }
-                    appendMessage(`⚙️ **${call.name}** → ${result}`, 'system');
+                    // Sanitize tool result to prevent XSS from file content
+                    const safeResult = Security.sanitize(result);
+                    appendMessage(`⚙️ **${Security.sanitize(call.name)}** → ${safeResult}`, 'system');
                 }
 
                 if (!toolCalls.length && !cleanText) {

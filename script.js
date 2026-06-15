@@ -164,7 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'cart-item-row';
             row.style.animation = 'slideIn 0.3s ease forwards';
             row.style.alignItems = 'center';
-            row.innerHTML = `<span>${item.name}</span><span style="display:flex;align-items:center;gap:12px;">$${item.price.toFixed(2)}<button class="remove-item" data-index="${i}" style="background:none;border:1px solid rgba(255,0,255,0.3);color:var(--neon-pink);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;line-height:1;display:flex;align-items:center;justify-content:center;transition:var(--transition);">&times;</button></span>`;
+            row.innerHTML = `<span></span><span style="display:flex;align-items:center;gap:12px;">$${item.price.toFixed(2)}<button class="remove-item" data-index="${i}" style="background:none;border:1px solid rgba(255,0,255,0.3);color:var(--neon-pink);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;line-height:1;display:flex;align-items:center;justify-content:center;transition:var(--transition);">&times;</button></span>`;
+            row.querySelector('span').textContent = item.name;
             cartItemsList.appendChild(row);
             total += item.price;
         });

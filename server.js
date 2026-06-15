@@ -1,12 +1,10 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
 // Rate limit state (in-memory)
-const rateLimitStore = new Map();
 const ipRequestCounts = new Map();
 
 const rateLimit = (maxRequests, windowMs) => {
@@ -95,7 +93,8 @@ app.use((req, res, next) => {
 const isSameOrigin = (req) => {
     const origin = req.headers.origin;
     const host = req.headers.host;
-    if (!origin) return true; // Same-origin requests from the same server
+    // Missing origin is allowed for GET/read operations but NOT for writes
+    if (!origin) return req.method === 'GET' || req.method === 'OPTIONS';
     try {
         const originUrl = new URL(origin);
         return originUrl.host === host || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1';
@@ -221,19 +220,7 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// --- Session token validation helper ---
-const SESSION_TOKENS = new Set();
-const validateSession = (req, res, next) => {
-    const token = req.headers['x-session-token'];
-    if (!token || !SESSION_TOKENS.has(token)) {
-        // Allow if same-origin (no token needed for same-origin requests)
-        if (isSameOrigin(req)) return next();
-        return res.status(401).json({ ok: false, error: 'Unauthorized' });
-    }
-    next();
-};
-
-// --- Data API (read is public, write requires session/same-origin) ---
+// --- Data API (read is public, write requires same-origin) ---
 app.get('/api/data/:key', rateLimit(120, 60000), (req, res) => {
     try {
         const filePath = safePath(req.params.key);
@@ -269,7 +256,7 @@ app.post('/api/data/:key', rateLimit(30, 60000), (req, res) => {
     }
 });
 
-// --- File System API (for Pxnda AI code editing) - AUTHENTICATION REQUIRED ---
+// --- File System API (for Pxnda AI code editing) - RESTRICTED ACCESS ---
 const projectRoot = __dirname;
 
 // Critical files that cannot be written/edited (protect server integrity)
@@ -277,6 +264,20 @@ const CRITICAL_FILES = new Set([
     'server.js', 'package.json', 'package-lock.json', '.env', '.gitignore',
     'Procfile', 'railway.json', 'start-server.bat', 'Dockerfile'
 ]);
+
+// Sensitive files that cannot even be read
+const SENSITIVE_FILES = new Set([
+    '.env', '.gitignore', 'package-lock.json', 'Procfile', 'railway.json', 'start-server.bat', 'Dockerfile'
+]);
+
+// System directories that absolute paths cannot access
+const BLOCKED_DIRS = [
+    '/etc', '/var', '/sys', '/proc', '/dev', '/boot', '/lib', '/bin', '/sbin',
+    '/usr/lib', '/usr/bin', '/usr/sbin', '/System', '/Library',
+    'C:\\Windows', 'C:\\Program Files', 'C:\\ProgramData',
+    'C:\\Windows\\System32', 'C:\\Windows\\SysWOW64',
+    'C:\\$Recycle.Bin', 'C:\\System Volume Information'
+];
 
 // Only allow editing these file extensions
 const ALLOWED_EXTENSIONS = new Set([
@@ -290,19 +291,23 @@ const safeFilePath = (userPath) => {
     if (/[\x00-\x1f]/.test(userPath)) return null;
     // Reject empty paths
     if (!userPath.trim()) return null;
-    // Allow absolute paths (Unix: /path, Windows: C:\path) or relative to project
-    if (path.isAbsolute(userPath)) return path.resolve(userPath);
-    return path.resolve(projectRoot, userPath);
+    const resolved = path.isAbsolute(userPath) ? path.resolve(userPath) : path.resolve(projectRoot, userPath);
+    // Block access to critical system directories for absolute paths
+    for (const dir of BLOCKED_DIRS) {
+        if (resolved.toLowerCase().startsWith(dir.toLowerCase())) return null;
+    }
+    // Block node_modules and .git directories anywhere in the path
+    const parts = resolved.split(path.sep);
+    for (const part of parts) {
+        if (part === 'node_modules' || part === '.git') return null;
+    }
+    return resolved;
 };
 
-// Authentication middleware for file operations
+// Authentication middleware for file operations (same-origin required)
 const requireFileAuth = (req, res, next) => {
     if (isSameOrigin(req)) return next();
-    const token = req.headers['x-session-token'];
-    if (!token || !SESSION_TOKENS.has(token)) {
-        return res.status(401).json({ ok: false, error: 'File operations require authentication' });
-    }
-    next();
+    return res.status(401).json({ ok: false, error: 'File operations require same-origin request' });
 };
 
 // List files in a directory
@@ -332,6 +337,11 @@ app.get('/api/files/read', rateLimit(30, 60000), requireFileAuth, (req, res) => 
             return res.status(404).json({ ok: false, error: 'File not found' });
         }
         const ext = path.extname(filePath);
+        const basename = path.basename(filePath);
+        // Block reading sensitive files
+        if (SENSITIVE_FILES.has(basename)) {
+            return res.status(403).json({ ok: false, error: 'Cannot read sensitive file' });
+        }
         // Only allow reading text-based files through this API
         if (!ALLOWED_EXTENSIONS.has(ext) && ext !== '') {
             return res.status(403).json({ ok: false, error: 'File type not readable through API' });
