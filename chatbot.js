@@ -344,54 +344,141 @@ You: Here are your orders:
 {tool:view_orders}{}{/tool}`;
     };
 
-    // --- Local fallback ---
-    const localResponse = (query) => {
+    // --- Local fallback: Q&A + action commands ---
+    const localResponse = async (query) => {
         const q = query.toLowerCase().trim();
         const data = storeData();
 
-        if (/^(users?|customers?|members?)\b/.test(q)) {
-            const count = data.users.length;
-            const admins = data.users.filter(u => u.role === 'admin').length;
-            const latest = data.users[data.users.length - 1];
-            let reply = `📊 **${count}** registered user${count !== 1 ? 's' : ''} (${admins} admin${admins !== 1 ? 's' : ''})`;
-            if (latest) reply += `\n\nLatest: **${Security.sanitize(latest.username)}** (${new Date(latest.created).toLocaleDateString()})`;
-            return reply;
+        // Action commands (no API key needed)
+        // Add account
+        const addAccMatch = q.match(/(?:add|create|new|list)\s*(?:a\s+)?(?:gta\s+)?account(?:\s+(?:called|named|titled)\s+[\"']?([^\"'$]+?)[\"']?)?(?:\s+for\s+\$?([\d.]+))?/i);
+        if (addAccMatch) {
+            const title = addAccMatch[1] ? addAccMatch[1].trim() : null;
+            const price = addAccMatch[2] ? parseFloat(addAccMatch[2]) : null;
+            if (!title) return `❓ What should I name the account? Try: *add account called "Modded Money" for $89*`;
+            if (!price || isNaN(price)) return `❓ What price? Try: *add account called "${title}" for $89*`;
+            const result = tools.add_account.execute({ title, price, category: 'other', description: '' });
+            if (result.error) return `❌ ${result.error}`;
+            return `✅ **${title}** listed for **$${price}**. Account #${result.id}`;
         }
-        if (/^(revenue|earnings?|income|sales|money)\b/.test(q)) {
-            return `💰 **Revenue:** $${data.revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\nFrom ${data.paid.length} completed order${data.paid.length !== 1 ? 's' : ''}`;
-        }
-        if (/^(orders?|purchases?)\b/.test(q)) {
-            const pending = data.requests.length - data.paid.length;
-            return `📦 **Orders:** ${data.requests.length} total\n• ${data.paid.length} paid\n• ${pending} pending`;
-        }
-        if (/^(listings?|accounts?|products?|store|gta)\b/.test(q)) {
-            if (!data.accounts.length) return `🛒 **GTA Store:** No accounts listed yet.`;
-            let reply = `🛒 **${data.accounts.length} GTA account${data.accounts.length !== 1 ? 's' : ''}:**\n`;
-            data.accounts.forEach((a, i) => { reply += `\n${i + 1}. **${Security.sanitize(a.title)}** — $${a.price} (${a.category})`; });
-            return reply;
-        }
-        if (/^(feed|posts?)\b/.test(q)) {
-            if (!data.posts.length)             return `📡 **Feed:** No posts yet.`;
-            let reply = `📡 **${data.posts.length} post${data.posts.length !== 1 ? 's' : ''}:**\n`;
-            data.posts.slice(0, 5).forEach((p, i) => { reply += `\n${i + 1}. **${Security.sanitize(p.title)}** (${p.date})`; });
-            return reply;
-        }
-        if (/^(audit|logs?|activity)\b/.test(q)) {
-            if (!data.audit.length) return `📋 **No recent activity.**`;
-            let reply = `📋 **Last ${Math.min(5, data.audit.length)}:**\n`;
-            data.audit.slice(0, 5).forEach(e => { reply += `\n• ${Security.sanitize(e.event)} — ${new Date(e.timestamp).toLocaleString()}`; });
-            return reply;
-        }
-        if (/^(help|commands|what can you)\b/.test(q)) return `🤖 **Commands:** users, revenue, orders, listings, feed, audit, status — or add an API key in Settings for full AI control.`;
-        if (/^(status|version)\b/.test(q)) return `🟢 **Online** · v5.0 · ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}\nUsers: ${data.users.length} · Orders: ${data.requests.length} · Revenue: $${data.revenue.toFixed(2)}`;
-        if (/\b(clear|reset|delete)\b/.test(q)) return `⚠️ Go to **Settings > Data Management** to clear data, or add an API key for AI-powered management.`;
-        if (/\b(hi|hello|hey|sup)\b/.test(q)) return `👋 Hey admin. ${data.requests.length} orders, $${data.revenue.toFixed(2)} revenue. What's up?`;
-        if (/\b(thanks?|ty)\b/.test(q)) return `👍 Anytime.`;
 
+        // Add post
+        const addPostMatch = q.match(/(?:add|create|new|make)\s*(?:a\s+)?post\s*(?:titled\s+[\"']?([^\"']+)[\"']?)?(?:\s*(?:with|saying|content)\s+[\"']?(.+?)[\"']?)?$/i);
+        if (addPostMatch) {
+            let title = addPostMatch[1] ? addPostMatch[1].trim() : null;
+            let content = addPostMatch[2] ? addPostMatch[2].trim() : null;
+            if (!title) {
+                const byline = q.replace(/(?:add|create|new|make)\s*(?:a\s+)?post\s*/i, '').trim();
+                if (byline.length > 3 && byline.length < 80) title = byline;
+                else return `❓ What should the post title be? Try: *add post titled "New Drop" with content "Fresh accounts available"*`;
+            }
+            if (!content) content = title;
+            const result = tools.add_post.execute({ title, content });
+            if (result.error) return `❌ ${result.error}`;
+            return `✅ **Post created:** "${title}"`;
+        }
+
+        // Delete account
+        const delAccMatch = q.match(/(?:delete|remove)\s*(?:account|listing)\s*[#]?(\d+)/i);
+        if (delAccMatch) {
+            const id = parseInt(delAccMatch[1]);
+            const idx = data.accounts.findIndex(a => a.id === id || a.id == id);
+            if (idx === -1) return `❌ Account #${id} not found. Try: *list accounts* to see IDs.`;
+            const account = data.accounts[idx];
+            // Simple confirm via prompt
+            if (!confirm(`Delete account "${account.title}" (#${id})?`)) return `Cancelled.`;
+            const result = tools.delete_account.execute({ id });
+            return result.error ? `❌ ${result.error}` : `✅ Deleted **${account.title}** (#${id})`;
+        }
+
+        // Delete post
+        const delPostMatch = q.match(/(?:delete|remove)\s*(?:feed\s+)?post\s*[#]?(\d+)/i);
+        if (delPostMatch) {
+            const id = parseInt(delPostMatch[1]);
+            const idx = data.posts.findIndex(p => p.id === id || p.id == id);
+            if (idx === -1) return `❌ Post #${id} not found.`;
+            const post = data.posts[idx];
+            if (!confirm(`Delete post "${post.title}" (#${id})?`)) return `Cancelled.`;
+            const result = tools.delete_post.execute({ id });
+            return result.error ? `❌ ${result.error}` : `✅ Deleted post **${post.title}** (#${id})`;
+        }
+
+        // View accounts (with details)
+        if (/^(?:show|view|list)\s*(?:me\s+)?(?:gta\s+)?(?:accounts?|listings?|products?|store)/i.test(q)) {
+            if (!data.accounts.length) return `🛒 **Store:** No accounts listed yet.`;
+            let reply = `🛒 **${data.accounts.length} account${data.accounts.length !== 1 ? 's' : ''}:**\n`;
+            data.accounts.forEach((a, i) => {
+                const desc = a.desc ? a.desc.substring(0, 60) : '';
+                reply += `\n📦 **#${a.id || i+1}** — ${Security.sanitize(a.title)} — **$${a.price}** [${a.category}]\n   ${Security.sanitize(desc)}`;
+            });
+            return reply;
+        }
+
+        // View posts
+        if (/^(?:show|view|list)\s*(?:me\s+)?(?:feed\s+)?(?:posts?|announcements?)/i.test(q)) {
+            if (!data.posts.length) return `📡 **Feed:** No posts yet.`;
+            let reply = `📡 **${data.posts.length} post${data.posts.length !== 1 ? 's' : ''}:**\n`;
+            data.posts.forEach((p, i) => {
+                reply += `\n📰 **#${p.id || i+1}** — ${Security.sanitize(p.title)} (${p.date})\n   ${Security.sanitize(p.content ? p.content.substring(0, 80) : '')}`;
+            });
+            return reply;
+        }
+
+        // View orders
+        if (/^(?:show|view|list)\s*(?:me\s+)?(?:orders?|purchases?)/i.test(q)) {
+            if (!data.requests.length) return `📦 **No orders yet.**`;
+            const pending = data.requests.length - data.paid.length;
+            let reply = `📦 **${data.requests.length} order${data.requests.length !== 1 ? 's' : ''}** (${data.paid.length} paid, ${pending} pending):\n`;
+            data.requests.slice(-5).forEach(r => {
+                const d = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : 'N/A';
+                reply += `\n• #${r.id || '?'} — $${r.total || '0'} — ${r.status || '?'} — ${d}`;
+            });
+            return reply;
+        }
+
+        // View users
+        if (/^(?:show|view|list)\s*(?:me\s+)?(?:users?|customers?)/i.test(q)) {
+            if (!data.users.length) return `📊 **No users yet.**`;
+            let reply = `📊 **${data.users.length} user${data.users.length !== 1 ? 's' : ''}:**\n`;
+            data.users.forEach(u => {
+                reply += `\n• @${Security.sanitize(u.username)} — ${u.role || 'user'} — joined ${new Date(u.created).toLocaleDateString()}`;
+            });
+            return reply;
+        }
+
+        // Set payment mode
+        const payModeMatch = q.match(/(?:set|switch|change)\s*(?:payment\s+)?mode\s*(?:to\s+)?(test|live)/i);
+        if (payModeMatch) {
+            const mode = payModeMatch[1].toLowerCase();
+            const result = tools.update_setting.execute({ key: 'payment_mode', value: mode });
+            return result.error ? `❌ ${result.error}` : `✅ Payment mode set to **${mode.toUpperCase()}**`;
+        }
+
+        // Status
+        if (/^(status|version|health)\b/.test(q)) return `🟢 **Online** · ${(window.PXNDAS_CONFIG || {}).PAYMENT_MODE === 'live' ? 'LIVE' : 'TEST'}\nUsers: ${data.users.length} · Orders: ${data.requests.length} · Revenue: $${data.revenue.toFixed(2)}`;
+
+        // Help
+        if (/^(help|commands|what can you)\b/.test(q)) {
+            return `🤖 **I can do everything without an API key:**\n\n` +
+                `📦 **Accounts:** add, list, delete\n` +
+                `📰 **Posts:** create, list, delete\n` +
+                `👥 **Users:** view users\n` +
+                `📋 **Orders:** view orders\n` +
+                `⚙️ **Settings:** set payment mode\n\n` +
+                `Try: *add account called "Modded Money" for $89*\n` +
+                `Or: *create post titled "New Drop"*\n` +
+                `Or just ask: *show me my accounts*`;
+        }
+
+        // Greetings
+        if (/\b(hi|hello|hey|sup|yo)\b/.test(q)) return `👋 Hey admin. ${data.requests.length} orders, $${data.revenue.toFixed(2)} revenue. Need me to do something? Try *help* for commands.`;
+        if (/\b(thanks?|ty|appreciate)\b/.test(q)) return `👍 Anytime boss.`;
+
+        // Generic data matches
         for (const [word, val] of Object.entries({ 'user': data.users.length, 'order': data.requests.length, 'paid': data.paid.length, 'revenue': `$${data.revenue.toFixed(2)}`, 'listing': data.accounts.length, 'product': data.accounts.length, 'post': data.posts.length })) {
             if (q.includes(word)) return `📊 That relates to **${val}** in the current data.`;
         }
-        return `🤔 Add an API key in **Settings** for full AI control, or try: users, revenue, orders, listings, audit, status.`;
+        return `Try *help* to see what I can do, or just tell me something like *add account called "X" for $Y*`;
     };
 
     // --- Proxy AI call ---
@@ -490,7 +577,7 @@ You: Here are your orders:
 
         await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
         removeTyping();
-        appendMessage(localResponse(text));
+        appendMessage(await localResponse(text));
         processingTool = false;
     };
 
