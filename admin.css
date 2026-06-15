@@ -820,6 +820,51 @@ tr:hover td { background: rgba(0, 255, 255, 0.02); }
     white-space: nowrap;
 }
 
+/* Chat AI/Local toggle switch */
+.chat-toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 36px;
+    height: 20px;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.chat-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.chat-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 200, 0, 0.15);
+    border: 1px solid rgba(255, 200, 0, 0.25);
+    border-radius: 20px;
+    transition: var(--transition);
+}
+.chat-toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--neon-yellow);
+    border-radius: 50%;
+    transition: var(--transition);
+}
+.chat-toggle-switch input:checked + .chat-toggle-slider {
+    background: rgba(0, 255, 255, 0.12);
+    border-color: rgba(0, 255, 255, 0.3);
+}
+.chat-toggle-switch input:checked + .chat-toggle-slider::before {
+    transform: translateX(16px);
+    background: var(--neon-blue);
+}
+
 #chat-header button {
     background: none;
     border: none;

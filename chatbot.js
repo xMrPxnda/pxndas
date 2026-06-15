@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let history = [];
     let processingTool = false;
+    const AI_TOGGLE_KEY = 'pxndas_ai_toggle';
 
     // Auto-load AI key from server env if not in localStorage
     (function ensureAiKey() {
@@ -30,6 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(() => {});
         }
     })();
+
+    const isAiEnabled = () => {
+        const hasKey = !!localStorage.getItem('pxndas_ai_key');
+        const pref = localStorage.getItem(AI_TOGGLE_KEY);
+        // Default: ON if key exists, OFF if no key
+        if (pref === null) return hasKey;
+        return pref === 'true' && hasKey;
+    };
 
     // --- Tool system ---
     const storeData = () => {
@@ -524,7 +533,10 @@ You: Here are your orders:
         const key = localStorage.getItem('pxndas_ai_key');
         const model = localStorage.getItem('pxndas_ai_model') || '';
         const short = model.split('/').pop() || model;
-        if (key) {
+        const toggle = document.getElementById('chatAiToggle');
+        const enabled = isAiEnabled();
+        if (toggle) toggle.checked = enabled;
+        if (key && enabled) {
             headerLabel.textContent = short.toUpperCase();
             headerLabel.style.cssText = 'color:var(--secondary);border-color:rgba(0,255,255,0.2);background:rgba(0,255,255,0.1)';
             if (titleSub) titleSub.textContent = model;
@@ -534,6 +546,13 @@ You: Here are your orders:
             if (titleSub) titleSub.textContent = 'offline mode';
         }
     };
+    // Toggle listener
+    document.addEventListener('change', (e) => {
+        if (e.target.id === 'chatAiToggle') {
+            localStorage.setItem(AI_TOGGLE_KEY, e.target.checked ? 'true' : 'false');
+            updateHeaderMode();
+        }
+    });
     window.updateChatHeader = updateHeaderMode;
     updateHeaderMode();
 
@@ -557,7 +576,7 @@ You: Here are your orders:
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
 
-        if (apiKey) {
+        if (apiKey && isAiEnabled()) {
             try {
                 const response = await callProxyAI(text);
                 removeTyping();

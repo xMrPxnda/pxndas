@@ -190,12 +190,24 @@ ${listings}
         return json.reply;
     };
 
+    // --- Toggle state ---
+    const AI_TOGGLE_KEY = 'pxndas_ai_toggle';
+    const isAiEnabled = () => {
+        const hasKey = !!localStorage.getItem('pxndas_ai_key');
+        const pref = localStorage.getItem(AI_TOGGLE_KEY);
+        if (pref === null) return hasKey;
+        return pref === 'true' && hasKey;
+    };
+
     // --- Update header mode ---
     const updateHeader = () => {
         const key = localStorage.getItem('pxndas_ai_key');
         const model = localStorage.getItem('pxndas_ai_model') || '';
         const short = model.split('/').pop() || model;
-        if (key && headerLabel) {
+        const toggle = document.getElementById('supportAiToggle');
+        const enabled = isAiEnabled();
+        if (toggle) toggle.checked = enabled;
+        if (key && enabled && headerLabel) {
             headerLabel.textContent = short.toUpperCase();
             if (titleSub) titleSub.textContent = 'AI powered';
         } else {
@@ -203,6 +215,13 @@ ${listings}
             if (titleSub) titleSub.textContent = 'quick answers';
         }
     };
+    // Toggle listener
+    document.addEventListener('change', (e) => {
+        if (e.target.id === 'supportAiToggle') {
+            localStorage.setItem(AI_TOGGLE_KEY, e.target.checked ? 'true' : 'false');
+            updateHeader();
+        }
+    });
     updateHeader();
 
     // --- Toggle ---
@@ -222,7 +241,7 @@ ${listings}
 
         const apiKey = localStorage.getItem('pxndas_ai_key');
 
-        if (apiKey) {
+        if (apiKey && isAiEnabled()) {
             try {
                 const response = await callProxyAI(text);
                 removeTyping();
