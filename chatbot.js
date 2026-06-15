@@ -412,6 +412,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 Security.auditLog('AI_CLEAR_ALL_DATA', {});
                 return { success: true, message: 'All store data has been reset.' };
             }
+        },
+
+        // ─── CODE / FILE OPERATIONS ───
+        list_files: {
+            desc: 'List files and directories in a project folder. Returns names, types, sizes.',
+            args: { dir: 'string (optional) — directory path relative to project root (default: ".")' },
+            execute: async (args) => {
+                try {
+                    const r = await fetch('/api/files/list?dir=' + encodeURIComponent(args.dir || '.'));
+                    const j = await r.json();
+                    if (!j.ok) return { error: j.error };
+                    const lines = j.files.map(f => `${f.type === 'dir' ? '📁' : '📄'} ${f.name}${f.type === 'file' ? ' (' + f.size + 'B)' : '/'}`);
+                    return { success: true, message: `📂 **${j.path}/**\n\n` + lines.join('\n') };
+                } catch (e) { return { error: e.message }; }
+            }
+        },
+        read_file: {
+            desc: 'Read the contents of any project file. Shows full content and file info.',
+            args: { path: 'string (required) — file path relative to project root (e.g. "index.html" or "admin.js")' },
+            execute: async (args) => {
+                if (!args.path) return { error: 'path is required' };
+                try {
+                    const r = await fetch('/api/files/read?path=' + encodeURIComponent(args.path));
+                    const j = await r.json();
+                    if (!j.ok) return { error: j.error };
+                    const preview = j.content.length > 2000 ? j.content.substring(0, 2000) + '\n\n... [truncated, ' + j.content.length + ' total chars]' : j.content;
+                    return { success: true, message: `📄 **${j.path}** (${j.size}B, .${j.ext})\n\n\`\`\`\n${preview}\n\`\`\`` };
+                } catch (e) { return { error: e.message }; }
+            }
+        },
+        write_file: {
+            desc: 'Create or completely overwrite a project file with new content.',
+            args: { path: 'string (required) — file path relative to project root', content: 'string (required) — full file content' },
+            confirm: true,
+            execute: async (args) => {
+                if (!args.path || args.content === undefined) return { error: 'path and content are required' };
+                try {
+                    const r = await fetch('/api/files/write', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: args.path, content: args.content })
+                    });
+                    const j = await r.json();
+                    if (!j.ok) return { error: j.error };
+                    Security.auditLog('AI_WRITE_FILE', { path: args.path, size: j.size });
+                    return { success: true, message: `✍️ Wrote ${j.size}B to **${j.path}**` };
+                } catch (e) { return { error: e.message }; }
+            }
+        },
+        edit_file: {
+            desc: 'Find and replace text in a file. Perfect for making targeted changes without rewriting the whole file.',
+            args: {
+                path: 'string (required) — file path relative to project root',
+                oldString: 'string (required) — exact text to find (must exist in the file)',
+                newString: 'string (required) — replacement text'
+            },
+            confirm: true,
+            execute: async (args) => {
+                if (!args.path || !args.oldString || args.newString === undefined) return { error: 'path, oldString, and newString are required' };
+                try {
+                    const r = await fetch('/api/files/edit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: args.path, oldString: args.oldString, newString: args.newString })
+                    });
+                    const j = await r.json();
+                    if (!j.ok) return { error: j.error };
+                    Security.auditLog('AI_EDIT_FILE', { path: args.path, replacements: j.replacements });
+                    return { success: true, message: `🔧 Edited **${j.path}** (${j.replacements} replacement${j.replacements > 1 ? 's' : ''})` };
+                } catch (e) { return { error: e.message }; }
+            }
         }
     };
 
@@ -447,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirmed) return 'Cancelled.';
         }
 
-        const result = tool.execute(call.args);
+        const result = await tool.execute(call.args);
         if (result.error) return `Error: ${result.error}`;
         Security.toast.show(result.message, 'success');
         return `✅ ${result.message}`;
@@ -671,6 +742,27 @@ You: Let me check what we have first, then we'll clear and rebuild.
 Admin: "Store is a mess, reset everything"
 You: Full factory reset — this will wipe everything. Confirming now.
 {tool:clear_data}{}{/tool}
+
+### Code & File Operations
+Admin: "Show me what files are in the project"
+You: Here's the project structure.
+{tool:list_files}{"dir":"."}{/tool}
+
+Admin: "Read the index.html file"
+You: Opening index.html.
+{tool:read_file}{"path":"index.html"}{/tool}
+
+Admin: "Change the footer text to say 2027"
+You: Updating the copyright year.
+{tool:edit_file}{"path":"index.html","oldString":"2026","newString":"2027"}{/tool}
+
+Admin: "Add a new CSS rule for .glow-effect to style.css"
+You: Adding the glow effect CSS.
+{tool:edit_file}{"path":"style.css","oldString":"/* Responsive */","newString":".glow-effect { text-shadow: 0 0 20px var(--neon-blue); }\n\n/* Responsive */"}{/tool}
+
+Admin: "Create a new file called announcement.js"
+You: Creating the new file.
+{tool:write_file}{"path":"announcement.js","content":"// Store announcement script\nconsole.log('Welcome to pxndas');"}{/tool}
 
 ## CRITICAL RULES (Follow These Absolutely)
 

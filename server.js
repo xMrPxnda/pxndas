@@ -24,7 +24,7 @@ seedFile('support_tickets', []);
 seedFile('live_chat_messages', []);
 
 // Middleware
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
@@ -150,6 +150,85 @@ app.post('/api/data/:key', (req, res) => {
     } catch (e) {
         return res.status(400).json({ ok: false, error: 'Invalid JSON or key' });
     }
+});
+
+// --- File System API (for Pxnda AI code editing) ---
+const projectRoot = __dirname;
+
+const safeFilePath = (userPath) => {
+    const resolved = path.resolve(projectRoot, userPath);
+    if (!resolved.startsWith(projectRoot)) return null;
+    return resolved;
+};
+
+// List files in a directory
+app.get('/api/files/list', (req, res) => {
+    try {
+        const dirPath = safeFilePath(req.query.dir || '.');
+        if (!dirPath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
+            return res.status(404).json({ ok: false, error: 'Directory not found' });
+        }
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        const files = entries.map(e => ({
+            name: e.name,
+            type: e.isDirectory() ? 'dir' : 'file',
+            size: e.isFile() ? fs.statSync(path.join(dirPath, e.name)).size : 0
+        }));
+        res.json({ ok: true, files, path: req.query.dir || '.' });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Read a file
+app.get('/api/files/read', (req, res) => {
+    try {
+        const filePath = safeFilePath(req.query.path);
+        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+            return res.status(404).json({ ok: false, error: 'File not found' });
+        }
+        const ext = path.extname(filePath);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        res.json({ ok: true, content, path: req.query.path, size: content.length, ext });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Write a file (create or overwrite)
+app.post('/api/files/write', (req, res) => {
+    try {
+        const filePath = safeFilePath(req.body.path);
+        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        const content = req.body.content;
+        if (typeof content !== 'string') return res.status(400).json({ ok: false, error: 'content must be a string' });
+        // Ensure parent directory exists
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filePath, content, 'utf-8');
+        console.log(`[FILE WRITE] ${req.body.path} (${content.length} chars)`);
+        res.json({ ok: true, path: req.body.path, size: content.length });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Edit a file (find and replace)
+app.post('/api/files/edit', (req, res) => {
+    try {
+        const filePath = safeFilePath(req.body.path);
+        if (!filePath) return res.status(403).json({ ok: false, error: 'Access denied' });
+        if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, error: 'File not found' });
+        const { oldString, newString } = req.body;
+        if (typeof oldString !== 'string' || typeof newString !== 'string') {
+            return res.status(400).json({ ok: false, error: 'oldString and newString are required' });
+        }
+        let content = fs.readFileSync(filePath, 'utf-8');
+        if (!content.includes(oldString)) {
+            return res.status(400).json({ ok: false, error: 'oldString not found in file' });
+        }
+        const count = content.split(oldString).length - 1;
+        content = content.replace(oldString, newString);
+        fs.writeFileSync(filePath, content, 'utf-8');
+        console.log(`[FILE EDIT] ${req.body.path} (${count} occurrence${count > 1 ? 's' : ''})`);
+        res.json({ ok: true, path: req.body.path, replacements: count });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // --- Serve static files ---
