@@ -220,7 +220,15 @@ app.post('/api/files/edit', (req, res) => {
         }
         let content = fs.readFileSync(filePath, 'utf-8');
         if (!content.includes(oldString)) {
-            return res.status(400).json({ ok: false, error: 'oldString not found in file' });
+            // Find nearby lines to help the AI self-correct
+            const lines = content.split('\n');
+            const previewLines = lines.slice(0, 30).map((l, i) => `${i + 1}: ${l}`).join('\n');
+            return res.status(400).json({
+                ok: false,
+                error: 'oldString not found in file',
+                hint: 'oldString must match EXACTLY including whitespace. Read the file first and copy the exact text.',
+                preview: previewLines
+            });
         }
         const count = content.split(oldString).length - 1;
         content = content.replace(oldString, newString);
