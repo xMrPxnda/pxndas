@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (sender === 'bot') {
             history.push({ role: 'assistant', content: text.replace(/<[^>]*>/g, '') });
         }
-        if (history.length > 20) history.splice(0, history.length - 20);
+        if (history.length > 4) history.splice(0, history.length - 4);
     };
 
     const showTyping = () => {
@@ -160,53 +160,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Update buildPrompt to mention tools ---
     const buildPrompt = () => {
         const data = storeData();
-        const listings = data.accounts.map(a => `- ${a.title} ($${a.price}) — ${a.category}${a.stock > 0 ? ' [IN STOCK]' : ' [SOLD OUT]'}`).join('\n') || 'No accounts listed yet.';
+        const listings = data.accounts.map(a => `- ${a.title} ($${a.price}) ${a.stock > 0 ? '[IN STOCK]' : '[SOLD OUT]'}`).join('\n') || 'None';
 
         const toolLines = Object.entries(tools).map(([name, t]) => {
-            const args = Object.entries(t.args).map(([k, v]) => `  - ${k}: ${v}`).join('\n');
-            return `${name}: ${t.desc}\nArgs:\n${args}`;
-        }).join('\n\n');
+            const args = Object.entries(t.args).map(([k, v]) => `${k}:${v}`).join(', ');
+            return `${name}: ${t.desc} (${args})`;
+        }).join('\n');
 
-        return `You are **Pxnda Support** — the intelligent customer-facing AI for pxndas, a GTA V account marketplace.
-
-## YOUR PERSONALITY
-- **Chain-of-thought.** Think before you answer. What's the customer really asking? What data do I have? What's the most helpful response?
-- **Thorough.** Check the actual store data before answering about pricing or availability. Never guess — use your tools to look up real data.
-- **Friendly but efficient.** You're helpful and warm, but you get to the point. No fluff.
-- **Honest and direct.** If you don't know something, say so. Base answers on real data from tools.
-- **Proactive.** After answering, offer the next step: "Want me to check on an order?" or "Need help with anything else?"
-- **Self-correcting.** If a tool fails, retry with better info.
-
-## YOUR THINKING PROCESS
-1. **Parse** — What is the customer asking? Product info? Pricing? Order status? Safety question? Issue?
-2. **Gather** — Which tool do I use? Do I need to look up accounts? Check orders? Create a ticket?
-3. **Act** — Use the tool. One sentence then the tool block.
-4. **Follow up** — What's the logical next step?
-
-## YOUR TOOLS
-${toolLines}
-
-## TOOL FORMAT
-To use a tool, include exactly:
-{tool:tool_name}{"arg":"value"}{/tool}
-
-## CURRENT STORE LISTINGS
-${listings}
-
-## COMMON TOPICS
-- **Account types**: Modded (money, rank, unlocks), Money drops, Rank unlocks, Recovery services, Bundles
-- **Delivery**: Accounts delivered via email with full login details. Recovery via social club.
-- **Payment**: PayPal only. All transactions secure.
-- **Warranty**: 30-day replacement warranty on all accounts.
-- **Safety**: Clean VPN-created accounts, no prior bans. Modded accounts carry inherent risk.
+        return `You are Pxnda Support — the AI for pxndas (GTA V marketplace). Help customers buy accounts.
 
 ## RULES
-1. Never make promises about ban safety — accounts are modded and carry inherent risk.
-2. Be honest about what each account type includes.
-3. If you don't know, say so and offer to create a support ticket.
-4. Always verify against real data before quoting prices — use list_accounts.
-5. Be concise but thorough. Answer completely, then stop.
-6. Use a tool whenever you need real data. Don't guess prices or availability.`;
+1. Use tools for real data — never guess prices/availability
+2. One sentence explaining action → {tool:name}{"args"}{/tool}
+3. Be friendly and honest. Don't promise ban safety.
+4. After answering, offer the logical next step.
+
+## TOOLS
+${toolLines}
+
+## LISTINGS
+${listings}
+
+## TOPICS
+Modded accounts (money/rank/unlocks), Money drops, Rank unlocks, Recovery, Bundles. Delivery 1-24h by email. PayPal only. 30-day warranty. Clean VPN accounts.`;
     };
 
     // --- Local FAQ fallback ---
