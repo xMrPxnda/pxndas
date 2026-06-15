@@ -955,38 +955,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ---- Post Creation ----
-
-    if (newPostForm) {
-        newPostForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const rawTitle = document.getElementById('postTitle').value.trim();
-            const rawContent = document.getElementById('postContent').value.trim();
-
-            if (!rawTitle || !rawContent) {
-                Security.toast.show('Both title and content are required.', 'warning');
-                return;
-            }
-            if (rawTitle.length > 200 || rawContent.length > 5000) {
-                Security.toast.show('Content exceeds maximum length.', 'warning');
-                return;
-            }
-
-            const posts = Security.secureStore.get('pxnda_posts') || [];
-            posts.unshift({
-                title: Security.sanitize(rawTitle),
-                content: Security.sanitize(rawContent),
-                date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()
-            });
-            Security.secureStore.set('pxnda_posts', posts);
-            Security.auditLog('POST_CREATED', { title: rawTitle });
-
-            Security.toast.show('Post published successfully!', 'success');
-            newPostForm.reset();
-            loadAdminPosts();
-        });
-    }
-
     // ---- Account Deletion ----
 
     if (adminAccountsList) {
