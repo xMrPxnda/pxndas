@@ -73,29 +73,140 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = storeData();
         const listings = data.accounts.map(a => `- ${a.title} ($${a.price}) — ${a.category}`).join('\n') || 'No accounts listed yet.';
 
-        return `You are Pxnda Support, the friendly customer support AI for pxndas — a GTA V / GTA Online account marketplace.
+    let history = [];
+    let lastToolResult = '';
 
-## Current Store Listings
+    // --- Tools ---
+    const tools = {
+        list_accounts: {
+            desc: 'Show all available GTA accounts with prices and categories.',
+            args: {},
+            execute: () => {
+                const data = storeData();
+                if (!data.accounts.length) return { success: false, message: 'No accounts listed right now.' };
+                const lines = data.accounts.map(a => `• **${a.title}** — $${a.price} (${a.category})${a.stock > 0 ? ' ✅ In stock' : ' ❌ Out of stock'}`);
+                return { success: true, message: `**Available GTA Accounts:**\n\n${lines.join('\n')}` };
+            }
+        },
+        get_account: {
+            desc: 'Get full details on a specific account by title or ID.',
+            args: { query: 'string — account title or ID to look up' },
+            execute: (args) => {
+                if (!args.query) return { error: 'Which account? Try: "Tell me about Modded Money Account"' };
+                const data = storeData();
+                const a = data.accounts.find(x => x.title?.toLowerCase().includes(args.query.toLowerCase()) || String(x.id) === args.query);
+                if (!a) return { error: `Couldn't find an account matching "${args.query}"` };
+                return { success: true, message: `**${a.title}** — $${a.price}\nCategory: ${a.category}\nStock: ${a.stock}\n\n${a.description || 'No description.'}` };
+            }
+        },
+        create_ticket: {
+            desc: 'Create a support ticket for the customer.',
+            args: { subject: 'string — short summary', message: 'string — details of the issue' },
+            execute: (args) => {
+                if (!args.subject || !args.message) return { error: 'Need a subject and message for the ticket.' };
+                const tickets = Security.secureStore.get('support_tickets') || [];
+                const ticket = {
+                    id: Date.now(),
+                    status: 'OPEN',
+                    subject: args.subject,
+                    message: args.message,
+                    user: 'customer',
+                    date: new Date().toISOString(),
+                    replies: []
+                };
+                tickets.push(ticket);
+                Security.secureStore.set('support_tickets', tickets);
+                Security.auditLog('SUPPORT_TICKET_CREATED', { id: ticket.id, subject: args.subject });
+                return { success: true, message: `✅ Ticket #${ticket.id} created for: "${args.subject}". A human will get back to you soon.` };
+            }
+        },
+        check_order: {
+            desc: 'Look up an order by email address.',
+            args: { email: 'string — email used at checkout' },
+            execute: (args) => {
+                if (!args.email) return { error: 'Need the email you ordered with.' };
+                const requests = Security.secureStore.get('service_requests') || [];
+                const orders = requests.filter(r => r.email?.toLowerCase() === args.email.toLowerCase());
+                if (!orders.length) return { success: true, message: `No orders found for ${args.email}. Did you use a different email?` };
+                const lines = orders.map(r => `• Order #${r.id} — ${r.items} — $${r.total} — Status: **${r.status}**`);
+                return { success: true, message: `**Orders for ${args.email}:**\n\n${lines.join('\n')}` };
+            }
+        }
+    };
+
+    // --- Parse tool calls from AI response ---
+    const parseToolCalls = (text) => {
+        const calls = [];
+        const regex = /\{tool:(\w+)\}([\s\S]*?)\{\/tool\}/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            try {
+                const args = match[2].trim() ? JSON.parse(match[2]) : {};
+                calls.push({ name: match[1], args });
+            } catch { /* skip malformed */ }
+        }
+        return calls;
+    };
+
+    // Execute tools
+    const execTool = async (call) => {
+        const tool = tools[call.name];
+        if (!tool) return `Unknown tool: ${call.name}`;
+        const result = await tool.execute(call.args);
+        if (result.error) return `Error: ${result.error}`;
+        return `✅ ${result.message}`;
+    };
+
+    // --- Update buildPrompt to mention tools ---
+    const buildPrompt = () => {
+        const data = storeData();
+        const listings = data.accounts.map(a => `- ${a.title} ($${a.price}) — ${a.category}${a.stock > 0 ? ' [IN STOCK]' : ' [SOLD OUT]'}`).join('\n') || 'No accounts listed yet.';
+
+        const toolLines = Object.entries(tools).map(([name, t]) => {
+            const args = Object.entries(t.args).map(([k, v]) => `  - ${k}: ${v}`).join('\n');
+            return `${name}: ${t.desc}\nArgs:\n${args}`;
+        }).join('\n\n');
+
+        return `You are **Pxnda Support** — the intelligent customer-facing AI for pxndas, a GTA V account marketplace.
+
+## YOUR PERSONALITY
+- **Chain-of-thought.** Think before you answer. What's the customer really asking? What data do I have? What's the most helpful response?
+- **Thorough.** Check the actual store data before answering about pricing or availability. Never guess — use your tools to look up real data.
+- **Friendly but efficient.** You're helpful and warm, but you get to the point. No fluff.
+- **Honest and direct.** If you don't know something, say so. Base answers on real data from tools.
+- **Proactive.** After answering, offer the next step: "Want me to check on an order?" or "Need help with anything else?"
+- **Self-correcting.** If a tool fails, retry with better info.
+
+## YOUR THINKING PROCESS
+1. **Parse** — What is the customer asking? Product info? Pricing? Order status? Safety question? Issue?
+2. **Gather** — Which tool do I use? Do I need to look up accounts? Check orders? Create a ticket?
+3. **Act** — Use the tool. One sentence then the tool block.
+4. **Follow up** — What's the logical next step?
+
+## YOUR TOOLS
+${toolLines}
+
+## TOOL FORMAT
+To use a tool, include exactly:
+{tool:tool_name}{"arg":"value"}{/tool}
+
+## CURRENT STORE LISTINGS
 ${listings}
 
-## Your Role
-- Answer customer questions about GTA accounts, pricing, delivery, and the store.
-- Be friendly, helpful, and concise. Use a casual but professional tone.
-- You can read the current listings above and reference them in answers.
-- You do NOT have the ability to make changes to the store.
-- If a customer asks about something you can't answer, direct them to the support contact form.
-
-## Common Topics
+## COMMON TOPICS
 - **Account types**: Modded (money, rank, unlocks), Money drops, Rank unlocks, Recovery services, Bundles
-- **Delivery**: Accounts are delivered via email with full login details. Recovery is done via social club.
-- **Payment**: PayPal only. All transactions are secure.
-- **Warranty**: All accounts come with a warranty. If something goes wrong within 30 days, we replace it.
-- **Safety**: Accounts use clean emails, VPN-created, with no prior bans.
+- **Delivery**: Accounts delivered via email with full login details. Recovery via social club.
+- **Payment**: PayPal only. All transactions secure.
+- **Warranty**: 30-day replacement warranty on all accounts.
+- **Safety**: Clean VPN-created accounts, no prior bans. Modded accounts carry inherent risk.
 
-## Rules
+## RULES
 1. Never make promises about ban safety — accounts are modded and carry inherent risk.
 2. Be honest about what each account type includes.
-3. If you don't know, say so and offer to create a support ticket.`;
+3. If you don't know, say so and offer to create a support ticket.
+4. Always verify against real data before quoting prices — use list_accounts.
+5. Be concise but thorough. Answer completely, then stop.
+6. Use a tool whenever you need real data. Don't guess prices or availability.`;
     };
 
     // --- Local FAQ fallback ---
@@ -245,7 +356,18 @@ ${listings}
             try {
                 const response = await callProxyAI(text);
                 removeTyping();
-                appendMessage(formatResponse(response));
+
+                // Parse and execute tool calls
+                const toolCalls = parseToolCalls(response);
+                let output = response.replace(/\{tool:\w+\}[\s\S]*?\{\/tool\}/g, '').trim();
+                for (const call of toolCalls) {
+                    const result = await execTool(call);
+                    lastToolResult = result;
+                    if (output) output += '\n\n' + result;
+                    else output = result;
+                }
+
+                appendMessage(formatResponse(output || 'Done.'));
                 return;
             } catch {
                 // Fall through to local
