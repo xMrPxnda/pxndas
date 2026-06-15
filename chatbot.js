@@ -17,6 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let history = [];
     let processingTool = false;
 
+    // Auto-load AI key from server env if not in localStorage
+    (function ensureAiKey() {
+        if (!localStorage.getItem('pxndas_ai_key')) {
+            fetch('/api/config').then(r => r.json()).then(cfg => {
+                if (cfg.ok && cfg.aiKey) {
+                    localStorage.setItem('pxndas_ai_key', cfg.aiKey);
+                    if (cfg.aiModel) localStorage.setItem('pxndas_ai_model', cfg.aiModel);
+                    if (cfg.aiProvider) localStorage.setItem('pxndas_ai_provider', cfg.aiProvider);
+                    updateHeaderMode();
+                }
+            }).catch(() => {});
+        }
+    })();
+
     // --- Tool system ---
     const storeData = () => {
         const users = Security.secureStore.get('pxndas_users') || [];
