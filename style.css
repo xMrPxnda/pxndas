@@ -289,12 +289,25 @@ nav {
     border: 1px solid rgba(0, 255, 255, 0.3);
     letter-spacing: 1px;
     text-transform: uppercase;
-    animation: pulse-badge 2s ease-in-out infinite;
+    animation: bobble 2s ease-in-out infinite;
 }
 
-@keyframes pulse-badge {
-    0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 255, 0.2); }
-    50% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); }
+.hero-content h1 {
+    animation: bobble 2s ease-in-out infinite;
+    animation-delay: 0.15s;
+}
+
+.hero-content p {
+    animation: bobble 2s ease-in-out infinite;
+    animation-delay: 0.3s;
+}
+
+@keyframes bobble {
+    0%, 100% { transform: translateY(0); }
+    45% { transform: translateY(-6px); }
+    60% { transform: translateY(0); }
+    75% { transform: translateY(-3px); }
+    90% { transform: translateY(0); }
 }
 
 .btn {
